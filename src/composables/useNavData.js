@@ -151,7 +151,7 @@ export function useNavData() {
       return
     }
     const remote = await readGist(state.token, state.gistId)
-    if (remote) state.data = remote
+    if (remote) state.data = { ...structuredClone(DEFAULT_DATA), ...remote }
     state.loaded = true
   }
 
@@ -166,7 +166,7 @@ export function useNavData() {
 
     const remote = await readGist(token, gistId)
     if (remote) {
-      state.data = remote
+      state.data = { ...structuredClone(DEFAULT_DATA), ...remote }
     } else {
       // 新 Gist，写入默认数据
       await writeGist(token, gistId, state.data)
