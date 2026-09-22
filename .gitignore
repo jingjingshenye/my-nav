@@ -1,0 +1,15 @@
+# 参考截图等临时文件
+.ref-*
+ref-*.png
+.shots/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# Python / Node 本地服务产物
+__pycache__/
+node_modules/

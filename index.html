@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
+  <title>Nav · 新标签页</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="wallpaper" id="wallpaper"></div>
+  <div class="wallpaper-mask"></div>
+
+  <header class="topbar">
+    <button class="round-btn" id="btnHome" title="回到第一页并聚焦搜索" aria-label="主页">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>
+    </button>
+    <button class="round-btn" id="btnMenu" title="菜单" aria-label="菜单">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+
+    <nav class="menu" id="menu" hidden>
+      <button data-act="add">＋ 添加网址</button>
+      <button data-act="edit" id="menuEdit">编辑模式</button>
+      <hr>
+      <button data-act="settings">外观设置</button>
+      <button data-act="sync">数据同步</button>
+      <hr>
+      <button data-act="import">导入数据</button>
+      <button data-act="export">导出数据</button>
+      <hr>
+      <button data-act="about">关于</button>
+    </nav>
+  </header>
+
+  <main class="stage">
+    <section class="search-area">
+      <div class="engine-tabs" id="engineTabs" role="tablist"></div>
+      <form class="search-bar" id="searchForm">
+        <button type="button" class="engine-logo" id="engineLogo" title="切换搜索引擎"></button>
+        <input id="searchInput" type="text" placeholder="输入关键字搜索" autocomplete="off" spellcheck="false">
+      </form>
+    </section>
+
+    <section class="grid-area" id="gridArea">
+      <div class="grid" id="grid"></div>
+      <div class="dots" id="dots"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <img class="logo-pinwheel" id="logo" src="assets/logo.svg" alt="关于" title="关于 Nav">
+  </footer>
+
+  <!-- 添加 / 编辑网址 -->
+  <dialog id="dlgSite">
+    <form class="dlg-form" id="siteForm" novalidate>
+      <h3 id="siteDlgTitle">添加网址</h3>
+      <label>名称
+        <input name="name" maxlength="24" placeholder="如：百度" required>
+      </label>
+      <label>网址
+        <input name="url" placeholder="https://www.example.com" required>
+      </label>
+      <label>图标 URL <span class="hint">留空则自动获取网站图标</span>
+        <input name="icon" placeholder="https://.../logo.png">
+      </label>
+      <label class="check"><input type="checkbox" name="badge"> 显示红点提醒</label>
+      <p class="form-error" id="siteFormError" hidden></p>
+      <div class="dlg-foot">
+        <button type="button" class="btn" data-close>取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 外观设置 -->
+  <dialog id="dlgSettings">
+    <div class="dlg-head">
+      <h3>外观设置</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body">
+      <section>
+        <h4>壁纸</h4>
+        <div class="wp-grid" id="wpGrid"></div>
+        <label class="mt">自定义壁纸 URL
+          <input id="wpUrl" placeholder="https://.../wallpaper.jpg">
+        </label>
+      </section>
+      <section>
+        <h4>图标服务</h4>
+        <label class="plain">自动获取图标地址（{host} 代表网站域名）
+          <input id="faviconApi" placeholder="https://api.iowen.cn/favicon/{host}.png">
+        </label>
+      </section>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" data-close>取消</button>
+      <button class="btn primary" id="settingsSave">保存</button>
+    </div>
+  </dialog>
+
+  <!-- 数据同步 -->
+  <dialog id="dlgSync">
+    <div class="dlg-head">
+      <h3>数据同步</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body">
+      <label class="plain">同步方式
+        <select id="syncType">
+          <option value="local">仅本地（浏览器存储）</option>
+          <option value="gitee-gist">Gitee Gist（云端）</option>
+        </select>
+      </label>
+      <div id="giteeFields" hidden>
+        <label class="plain">Gitee 私令牌 Token（需要 gists 权限）
+          <input id="syncToken" type="password" placeholder="gtp_xxxxxxxx" autocomplete="off">
+        </label>
+        <p class="hint">还没有？<a href="https://gitee.com/profile/personal_access_tokens" target="_blank" rel="noopener">去 Gitee 创建私令牌 →</a>　仅保存在本机浏览器，通过 HTTPS 直连 Gitee。</p>
+        <label class="plain">Gist ID
+          <input id="syncGistId" placeholder="留空则「推送到云端」时自动创建私密 Gist">
+        </label>
+        <label class="plain">数据文件名
+          <input id="syncFile" placeholder="nav-data.json">
+        </label>
+        <label class="check"><input type="checkbox" id="syncAuto"> 修改后自动同步到云端</label>
+      </div>
+      <p class="sync-status" id="syncStatus"></p>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" id="syncPull">从云端拉取</button>
+      <button class="btn primary" id="syncPush">推送到云端</button>
+    </div>
+  </dialog>
+
+  <!-- 关于 -->
+  <dialog id="dlgAbout">
+    <div class="dlg-head">
+      <h3>关于 Nav</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body about">
+      <img src="assets/logo.svg" width="48" height="48" alt="logo">
+      <p>一个参照 inftab 风格的极简起始页。</p>
+      <p>数据可保存在本机，也可通过 Gitee Gist 云端同步，走到哪用到哪。</p>
+      <p class="hint">快捷键：/ 或 Ctrl+K 聚焦搜索 · ←/→ 翻页 · 滚轮翻页 · 右键卡片编辑</p>
+      <p class="hint">开源：<a href="https://gitee.com/jingjingshenye/nav-page" target="_blank" rel="noopener">gitee.com/jingjingshenye/nav-page</a></p>
+    </div>
+  </dialog>
+
+  <div class="ctx-menu" id="ctxMenu" hidden></div>
+  <div class="toasts" id="toasts"></div>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
