@@ -768,6 +768,7 @@ function openSettings() {
   renderEngineList();
   $('#wpUrl').value = s.customWallpaper || '';
   $('#optBingDaily').checked = !!s.bingDaily;
+  $$('.range-row input').forEach(updateRangeFill);
   $('#dlgSettings').showModal();
 }
 
@@ -1080,7 +1081,19 @@ function renderWpGrid() {
   });
 }
 
+function updateRangeFill(el) {
+  const p = (el.value - el.min) / (el.max - el.min) * 100;
+  el.style.setProperty('--p', p.toFixed(1) + '%');
+}
+
 function bindSettingsDialog() {
+  // 设置页左侧分类导航
+  $('#setNav').addEventListener('click', e => {
+    const b = e.target.closest('button[data-pane]');
+    if (!b) return;
+    $$('#setNav button').forEach(x => x.classList.toggle('active', x === b));
+    $$('.set-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === b.dataset.pane));
+  });
   $('#btnAddEngine').addEventListener('click', () => openEngineDialog(null));
   $('#btnGallery').addEventListener('click', openGallery);
   $('#bingRefresh').addEventListener('click', loadBingGallery);
@@ -1111,6 +1124,7 @@ function bindSettingsDialog() {
     el.addEventListener('input', () => {
       state.data.settings[key] = parseInt(el.value, 10);
       $('#' + valId).textContent = el.value + suffix;
+      updateRangeFill(el);
       if (apply) apply();
       persistLocal();
     });

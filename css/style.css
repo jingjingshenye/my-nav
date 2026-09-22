@@ -545,3 +545,214 @@ label.mt { margin-top: 12px; }
 .danger-btn:hover { background: #fdf1f1; }
 .set-card .btn.danger-btn { display: block; margin: 8px auto 2px; padding: 9px 60px; }
 .set-card .hint { margin: 2px 0 10px; }
+
+/* ========================================================= */
+/* ========== 设计语言 v2「墨玻璃」：深色毛玻璃统一皮肤 ========== */
+/* ========================================================= */
+:root {
+  --glass: rgba(21, 25, 30, .88);
+  --glass-2: rgba(255, 255, 255, .055);
+  --glass-3: rgba(255, 255, 255, .10);
+  --line: rgba(255, 255, 255, .09);
+  --line-2: rgba(255, 255, 255, .16);
+  --tx: #eef1f4;
+  --tx-2: rgba(238, 241, 244, .52);
+  --acc: #5aa2ff;
+  --acc-soft: rgba(90, 162, 255, .16);
+  --ok: #37d2a4;
+  --bad: #ff8585;
+  --r-lg: 18px;
+  --r-md: 12px;
+  --r-sm: 9px;
+}
+
+/* ---------- 弹窗基座 ---------- */
+dialog {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  backdrop-filter: blur(28px) saturate(1.5);
+  color: var(--tx);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .07);
+}
+dialog::backdrop { background: rgba(6, 9, 12, .42); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+
+.dlg-head { border-bottom: 1px solid var(--line); }
+.dlg-head h3, .dlg-form h3 { color: var(--tx); letter-spacing: .02em; }
+.dlg-close { color: var(--tx-2); }
+.dlg-close:hover { background: var(--glass-2); color: var(--tx); }
+.dlg-foot { border-top: 1px solid var(--line); }
+
+.dlg-body h4, .dlg-form h3 { color: var(--tx); }
+.dlg-body section, .dlg-body .about { border-bottom: none; }
+.dlg-body label, .dlg-form label, #dlgEngine summary { color: var(--tx-2); }
+.dlg-body label.plain, .dlg-form label, .dlg-body label.mt { color: var(--tx-2); }
+.dlg-body h4 { color: var(--tx-2); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+
+.dlg-body input, .dlg-body select, .dlg-form input,
+.dlg-body .set-pane input:not([type="checkbox"]):not([type="range"]) {
+  background: rgba(255, 255, 255, .055);
+  border: 1px solid var(--line);
+  color: var(--tx);
+  border-radius: var(--r-sm);
+}
+.dlg-body input::placeholder, .dlg-form input::placeholder { color: rgba(238, 241, 244, .3); }
+.dlg-body input:focus, .dlg-body select:focus, .dlg-form input:focus {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-soft);
+  background: rgba(255, 255, 255, .08);
+}
+.dlg-body select option { background: #16191d; color: var(--tx); }
+
+.hint { color: var(--tx-2); }
+.hint a { color: var(--acc); }
+.form-error { color: var(--bad); }
+.sync-status { color: var(--ok); }
+
+.btn {
+  background: var(--glass-2);
+  border: 1px solid var(--line-2);
+  color: var(--tx);
+}
+.btn:hover { background: var(--glass-3); }
+.btn.primary {
+  background: linear-gradient(135deg, var(--acc), var(--ok));
+  border: none;
+  color: #071018;
+  font-weight: 700;
+}
+.btn.primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--acc), var(--ok)); }
+.danger-btn { color: var(--bad); border-color: rgba(255, 133, 133, .4); }
+.danger-btn:hover { background: rgba(255, 133, 133, .1); }
+
+/* ---------- 通用弹出菜单（右上菜单 / 右键 / 引擎下拉 / 搜索建议） ---------- */
+.menu, .ctx-menu, .engine-menu, .sug-drop {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--line);
+  color: var(--tx);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+.menu button, .ctx-menu button { color: var(--tx); }
+.menu button:hover, .ctx-menu button:hover { background: var(--glass-2); }
+.menu hr, .ctx-menu hr { border-color: var(--line); }
+.menu button.on { color: var(--ok); }
+.ctx-menu button.danger { color: var(--bad); }
+
+.engine-menu { padding: 12px; }
+.engine-menu .eng-pick .eng-name { color: var(--tx-2); }
+.engine-menu .eng-pick:hover { background: var(--glass-2); }
+.engine-menu .eng-pick:hover .eng-name { color: var(--tx); }
+.engine-menu .eng-pick.on .eng-name { color: var(--ok); }
+.engine-menu .eng-pick .eng-glyph.plus { background: var(--glass-3); color: var(--tx); }
+
+.sug-drop { background: var(--glass); -webkit-backdrop-filter: blur(24px) saturate(1.5); backdrop-filter: blur(24px) saturate(1.5); }
+.sug-drop li { color: var(--tx); }
+.sug-drop li:hover, .sug-drop li.active { background: var(--acc-soft); color: #cfe4ff; }
+
+/* ---------- 设置面板：左导航 + 内容面板 ---------- */
+.settings-dlg { width: min(860px, 96vw); }
+.settings-dlg .dlg-body.settings-body { padding: 0; }
+.set-wrap { display: flex; min-height: 470px; max-height: 60vh; }
+.set-nav {
+  width: 158px; flex: none;
+  border-right: 1px solid var(--line);
+  padding: 16px 10px;
+  display: flex; flex-direction: column; gap: 3px;
+  overflow: auto;
+}
+.set-nav button {
+  text-align: left; padding: 9px 14px;
+  border: none; border-radius: var(--r-sm);
+  background: none; cursor: pointer;
+  font-size: 13.5px; color: var(--tx-2);
+  transition: background .15s, color .15s;
+}
+.set-nav button:hover { color: var(--tx); background: var(--glass-2); }
+.set-nav button.active {
+  color: var(--tx);
+  background: linear-gradient(90deg, var(--acc-soft), rgba(90, 162, 255, .03));
+  box-shadow: inset 2.5px 0 0 var(--acc);
+  font-weight: 600;
+}
+.set-panes { flex: 1; min-width: 0; overflow: auto; padding: 24px 26px; }
+.set-pane { display: none; }
+.set-pane.active { display: block; animation: pane-in .18s ease; }
+@keyframes pane-in { from { opacity: 0; transform: translateY(4px); } }
+.set-pane h4 {
+  margin: 0 0 6px; font-size: 12px; color: var(--tx-2);
+  letter-spacing: .14em; text-transform: uppercase;
+}
+.set-pane h4 + .set-row { margin-top: 4px; }
+.pane-tip { font-size: 12.5px; color: var(--tx-2); margin: 2px 0 14px; }
+
+.set-row {
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+  color: var(--tx);
+  font-size: 13.5px;
+}
+.set-row:last-child { border-bottom: none; }
+.set-row > span { color: var(--tx); }
+.set-row.col { padding-bottom: 14px; }
+
+/* 开关（深色） */
+.switch i { background: rgba(255, 255, 255, .16); }
+.switch input:checked + i { background: var(--acc); }
+
+/* 滑杆（深色 + 已填充轨迹） */
+.range-row input[type="range"] {
+  background: linear-gradient(90deg, var(--acc) var(--p, 50%), rgba(255, 255, 255, .14) var(--p, 50%));
+}
+.range-row input[type="range"]::-webkit-slider-thumb {
+  width: 15px; height: 15px;
+  background: #fff; border: 2px solid var(--acc);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, .4);
+}
+.range-val { color: var(--tx-2); }
+
+/* 壁纸 / 壁纸库（深色卡片） */
+.wp-thumb { border-radius: var(--r-sm); opacity: .92; }
+.wp-thumb.active { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
+.gal-item {
+  background: var(--glass-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.gal-item:hover { border-color: var(--line-2); box-shadow: 0 8px 26px rgba(0, 0, 0, .35); }
+.gal-thumb { background-color: rgba(255, 255, 255, .06); border-radius: var(--r-md) var(--r-md) 0 0; }
+.gal-cap { color: var(--tx-2); }
+.mini-btn {
+  background: var(--glass-2); border: 1px solid var(--line-2); color: var(--tx-2);
+}
+.mini-btn:hover { background: var(--glass-3); color: var(--tx); }
+
+/* 搜索引擎列表（深色） */
+.eng-row:hover { background: var(--glass-2); }
+.eng-info b { color: var(--tx); }
+.eng-info i { color: var(--tx-2); }
+.eng-btn { color: var(--tx-2); }
+.eng-btn:hover { background: var(--glass-3); color: var(--tx); }
+.cat-item {
+  background: var(--glass-2);
+  border: 1px solid var(--line);
+  color: var(--tx);
+}
+.cat-item:hover { border-color: var(--acc); background: var(--acc-soft); }
+
+/* 布局预设（深色） */
+.lp-btn { background: var(--glass-2); border: 1.5px solid var(--line); }
+.lp-btn:hover { border-color: var(--line-2); }
+.lp-btn.active { border-color: var(--acc); background: var(--acc-soft); }
+.lp-mini i { background: rgba(255, 255, 255, .16); }
+.lp-name { color: var(--tx-2); }
+.lp-btn.active .lp-name { color: var(--tx); }
+
+/* 色板（深色底描边） */
+.sw { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.sw.active { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
+
+.settings-body { background: transparent; }
+.set-panes { background: transparent; }
+.set-nav { background: transparent; }
