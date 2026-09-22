@@ -39,13 +39,16 @@
       <div class="engine-tabs" id="engineTabs" role="tablist"></div>
       <form class="search-bar" id="searchForm">
         <button type="button" class="engine-logo" id="engineLogo" title="切换搜索引擎"></button>
-        <input id="searchInput" type="text" placeholder="输入关键字搜索" autocomplete="off" spellcheck="false">
+        <input id="searchInput" type="text" placeholder="输入并搜索" autocomplete="off" spellcheck="false">
       </form>
+      <ul class="sug-drop" id="sugDrop" hidden></ul>
       <nav class="menu engine-menu" id="engineMenu" hidden></nav>
     </section>
 
     <section class="grid-area" id="gridArea">
+      <div class="grid-arrow prev" id="gridPrev" hidden>‹</div>
       <div class="grid" id="grid"></div>
+      <div class="grid-arrow next" id="gridNext" hidden>›</div>
       <div class="dots" id="dots"></div>
     </section>
   </main>
@@ -83,6 +86,26 @@
       <button class="dlg-close" data-close title="关闭">&times;</button>
     </div>
     <div class="dlg-body">
+      <section>
+        <h4>搜索</h4>
+        <label class="check"><input type="checkbox" id="optSuggest"> 启用搜索建议</label>
+        <label class="check"><input type="checkbox" id="optHideName"> 隐藏图标名称</label>
+      </section>
+      <section>
+        <h4>网格布局</h4>
+        <div class="layout-row">
+          <label class="plain half">行数
+            <select id="layoutRow">
+              <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+            </select>
+          </label>
+          <label class="plain half">列数
+            <select id="layoutCol">
+              <option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+            </select>
+          </label>
+        </div>
+      </section>
       <section>
         <h4>搜索引擎</h4>
         <div class="engine-list" id="engineList"></div>
@@ -147,18 +170,23 @@
     <form class="dlg-form" id="engForm" novalidate>
       <h3 id="engDlgTitle">添加搜索引擎</h3>
       <input type="hidden" id="engId">
+      <div id="engCatalogBox">
+        <h4 class="dlg-sub">从引擎库启用</h4>
+        <div class="eng-catalog" id="engCatalog"></div>
+        <h4 class="dlg-sub">或添加自定义引擎</h4>
+      </div>
       <label>名称
-        <input id="engName" maxlength="16" placeholder="如：掘金" required>
+        <input id="engName" maxlength="16" placeholder="如：掘金">
       </label>
-      <label>网页搜索地址 <span class="hint">必须包含 %s，代表搜索词</span>
-        <input id="engWeb" placeholder="https://example.com/search?q=%s">
+      <label>网页搜索地址 <span class="hint">%s 代表搜索词；不含 %s 则直接在地址末尾拼接</span>
+        <input id="engHtml" placeholder="https://example.com/search?q=%s">
       </label>
       <details>
-        <summary>其他搜索类型地址（可选，同样包含 %s）</summary>
-        <label>图片<input id="engImages" placeholder="https://.../images?q=%s"></label>
-        <label>视频<input id="engVideo" placeholder="https://.../video?q=%s"></label>
-        <label>新闻<input id="engNews" placeholder="https://.../news?q=%s"></label>
-        <label>音乐<input id="engMusic" placeholder="https://.../music?q=%s"></label>
+        <summary>其他搜索类型地址（可选）</summary>
+        <label>图片 photos<input id="engPhotos" placeholder="https://.../images?q=%s"></label>
+        <label>视频 videos<input id="engVideos" placeholder="https://.../videos?q=%s"></label>
+        <label>新闻 news<input id="engNews" placeholder="https://.../news?q=%s"></label>
+        <label>地图 map<input id="engMap" placeholder="https://.../map?q=%s"></label>
       </details>
       <p class="form-error" id="engFormError" hidden></p>
       <div class="dlg-foot">

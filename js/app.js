@@ -1,4 +1,4 @@
-import { createAdapter, ADAPTERS, DATA_FILE, LocalAdapter } from './adapters.js';
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js';
 
 /* ================= 小工具 ================= */
 const $ = (s, el = document) => el.querySelector(s);
@@ -9,51 +9,101 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 const SVG_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const SVG_X = '✕';
 
-/* ================= 搜索类型与引擎 ================= */
-// 顶部 tab：搜索类型，各引擎按类型提供地址模板（引擎存在 settings.engines，可自由增删改）
+function tint(name) {
+  const palette = ['#f2708a', '#5aa9e6', '#7fc8a9', '#e6a157', '#9b8ce0', '#59c3c3'];
+  let h = 0;
+  for (const ch of String(name)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return palette[h % palette.length];
+}
+
+/* ================= 搜索类型与引擎（对齐 inftab） ================= */
+// 顶部 tab：搜索类型。每个引擎按类型提供地址模板，搜索词直接拼接在地址末尾（或替换 %s）。
 const TYPES = [
-  { id: 'web',    name: '网页' },
-  { id: 'images', name: '图片' },
-  { id: 'video',  name: '视频' },
-  { id: 'news',   name: '新闻' },
-  { id: 'music',  name: '音乐' },
+  { id: 'html',   name: 'html' },
+  { id: 'photos', name: 'photos' },
+  { id: 'news',   name: 'news' },
+  { id: 'videos', name: 'videos' },
+  { id: 'map',    name: 'map' },
 ];
 
-// 地址模板中的 %s 代表搜索词
-function seedEngines() {
-  return [
-    { id: 'baidu', name: '百度', glyph: '百', color: '#2932e1', urls: {
-      web: 'https://www.baidu.com/s?wd=%s',
-      images: 'https://image.baidu.com/search/index?tn=baiduimage&word=%s',
-      video: 'https://video.baidu.com/search?word=%s',
-      news: 'https://www.baidu.com/s?tn=news&word=%s',
-      music: 'https://music.baidu.com/search?key=%s' } },
-    { id: 'bing', name: '必应', glyph: 'b', color: '#008373', urls: {
-      web: 'https://www.bing.com/search?q=%s',
-      images: 'https://www.bing.com/images/search?q=%s',
-      video: 'https://www.bing.com/videos/search?q=%s',
-      news: 'https://www.bing.com/news/search?q=%s' } },
-    { id: 'google', name: '谷歌', glyph: 'G', color: '#4285f4', urls: {
-      web: 'https://www.google.com/search?q=%s',
-      images: 'https://www.google.com/search?q=%s&tbm=isch',
-      video: 'https://www.google.com/search?q=%s&tbm=vid',
-      news: 'https://www.google.com/search?q=%s&tbm=nws' } },
-    { id: 'sogou', name: '搜狗', glyph: '搜', color: '#ff6f37', urls: {
-      web: 'https://www.sogou.com/web?query=%s',
-      images: 'https://pic.sogou.com/pics?query=%s',
-      video: 'https://v.sogou.com/v?query=%s',
-      news: 'https://news.sogou.com/news?query=%s' } },
-    { id: 'so360', name: '360搜索', glyph: '360', color: '#3dbd38', urls: {
-      web: 'https://www.so.com/s?q=%s',
-      images: 'https://image.so.com/j?q=%s',
-      video: 'https://video.so.com/v?q=%s',
-      news: 'https://news.so.com/ns?q=%s' } },
-    { id: 'zhihu', name: '知乎', glyph: '知', color: '#056de8', urls: { web: 'https://www.zhihu.com/search?type=content&q=%s' } },
-    { id: 'github', name: 'GitHub', glyph: 'GH', color: '#24292f', urls: { web: 'https://github.com/search?q=%s' } },
-    { id: 'taobao', name: '淘宝', glyph: '淘', color: '#ff5000', urls: { web: 'https://s.taobao.com/search?q=%s' } },
-    { id: 'weibo', name: '微博', glyph: '微', color: '#e6162d', urls: { web: 'https://s.weibo.com/weibo?q=%s' } },
-  ];
-}
+// 内置引擎库（baidu/bing 地址原样取自 inftab 默认数据，其余按各家官方搜索拼装）
+const ENGINE_CATALOG = [
+  {
+    id: 'baidu', name: 'baidu', glyph: '百', color: '#2932e1', urls: {
+      html: 'https://www.baidu.com/s?tn=75144485_7_dg&ie=utf-8&wd=',
+      photos: 'https://image.baidu.com/search/index?isource=infinity&iname=baidu&tn=baiduimage&word=',
+      news: 'https://news.baidu.com/ns?isource=infinity&iname=baidu&tn=news&ie=utf-8&word=',
+      videos: 'https://video.baidu.com/v?isource=infinity&iname=baidu&ie=utf-8&word=',
+      map: 'http://map.baidu.com/?isource=infinity&iname=baidu&newmap=1&ie=utf-8&s=s%26wd%3D',
+    },
+  },
+  {
+    id: 'bing', name: 'bing', glyph: 'b', color: '#008373', urls: {
+      html: 'https://cn.bing.com/search?isource=infinity&iname=bing&itype=web&q=',
+      photos: 'https://cn.bing.com/images/search?isource=infinity&iname=bing&q=',
+      news: 'https://global.bing.com/news/search?isource=infinity&iname=bing&q=',
+      videos: 'https://cn.bing.com/videos/search?isource=infinity&iname=bing&q=',
+      map: 'https://www.bing.com/ditu/?isource=infinity&iname=bing&q=',
+    },
+  },
+  {
+    id: 'yahoo', name: 'yahoo', glyph: 'Y', color: '#5f01d1', urls: {
+      html: 'https://search.yahoo.com/search?p=%s',
+      photos: 'https://images.search.yahoo.com/search/images?p=%s',
+      news: 'https://news.search.yahoo.com/search?p=%s',
+      videos: 'https://video.search.yahoo.com/search/video?p=%s',
+      map: 'https://search.yahoo.com/search?p=%s',
+    },
+  },
+  {
+    id: 'yandex', name: 'yandex', glyph: 'Я', color: '#fc3f1d', urls: {
+      html: 'https://yandex.com/search/?text=%s',
+      photos: 'https://yandex.com/images/search?text=%s',
+      news: 'https://yandex.com/news/search?text=%s',
+      videos: 'https://yandex.com/video/search?text=%s',
+      map: 'https://yandex.com/maps/?text=%s',
+    },
+  },
+  {
+    id: 'duckduckgo', name: 'duckduckgo', glyph: 'D', color: '#de5833', urls: {
+      html: 'https://duckduckgo.com/?q=%s&ia=web',
+      photos: 'https://duckduckgo.com/?q=%s&iax=images&ia=images',
+      news: 'https://duckduckgo.com/?q=%s&iar=news&ia=news',
+      videos: 'https://duckduckgo.com/?q=%s&iax=videos&ia=videos',
+      map: 'https://duckduckgo.com/?q=%s&ia=webmap&iaxm=maps',
+    },
+  },
+  {
+    id: 'n_360', name: '360搜索', glyph: '360', color: '#3dbd38', urls: {
+      html: 'https://www.so.com/s?q=%s',
+      photos: 'https://image.so.com/j?q=%s',
+      news: 'https://news.so.com/ns?q=%s',
+      videos: 'https://video.so.com/v?q=%s',
+      map: 'https://map.so.com/?q=%s',
+    },
+  },
+  {
+    id: 'sougou', name: 'sogou', glyph: '搜', color: '#ff6f37', urls: {
+      html: 'https://www.sogou.com/web?query=%s',
+      photos: 'https://pic.sogou.com/pics?query=%s',
+      news: 'https://news.sogou.com/news?query=%s',
+      videos: 'https://v.sogou.com/v?query=%s',
+      map: 'https://map.sogou.com/m/fulltext?query=%s',
+    },
+  },
+  {
+    id: 'yarndex_ru', name: 'yandex ru', glyph: 'Я', color: '#a52a2a', urls: {
+      html: 'https://yandex.ru/search/?text=%s',
+      photos: 'https://yandex.ru/images/search?text=%s',
+      news: 'https://yandex.ru/news/search?text=%s',
+      videos: 'https://yandex.ru/video/search?text=%s',
+      map: 'https://yandex.ru/maps/?text=%s',
+    },
+  },
+];
+
+const cloneEngine = e => ({ id: e.id, name: e.name, glyph: e.glyph || '', color: e.color || '', urls: { ...e.urls } });
+const seedEngines = () => ENGINE_CATALOG.filter(e => e.id === 'baidu' || e.id === 'bing').map(cloneEngine);
 
 /* ================= 内置壁纸 ================= */
 const WALLPAPERS = [
@@ -70,9 +120,11 @@ const DEFAULT_FAVICON_API = 'https://api.iowen.cn/favicon/{host}.png';
 function seedSettings() {
   return {
     engine: 'baidu',
-    searchType: 'web',
-    engineByType: {},
+    searchType: 'html',
     engines: seedEngines(),
+    layout: { row: 3, col: 6 },
+    searchSuggest: true,
+    hideIconName: false,
     wallpaper: 'preset:forest',
     customWallpaper: '',
     faviconApi: DEFAULT_FAVICON_API,
@@ -81,17 +133,41 @@ function seedSettings() {
   };
 }
 
-/** 校验/修补设置：兼容旧版数据与被裁剪的云端数据 */
+// 旧版类型 -> 新类型的映射（web/images/video/news/music -> html/photos/videos/news/–）
+const TYPE_ALIAS = { web: 'html', images: 'photos', video: 'videos', news: 'news', html: 'html', photos: 'photos', videos: 'videos', map: 'map' };
+
+function migrateUrls(urls = {}) {
+  const out = {};
+  for (const [k, v] of Object.entries(urls)) {
+    const nk = TYPE_ALIAS[k];
+    if (nk && typeof v === 'string' && v) out[nk] = v;
+  }
+  return out;
+}
+
+/** 校验/修补设置：兼容旧版结构与被裁剪的云端数据，并把内置引擎与最新模板对齐 */
 function normalizeSettings(s = {}) {
   const def = seedSettings();
   const out = { ...def, ...s };
   out.engines = (Array.isArray(s.engines) ? s.engines : def.engines)
-    .filter(e => e && e.id && e.name && e.urls && typeof e.urls.web === 'string')
-    .map(e => ({ id: e.id, name: String(e.name), glyph: e.glyph || '', color: e.color || '', urls: { ...e.urls } }));
+    .filter(e => e && e.id && e.name && e.urls)
+    .map(e => ({ id: e.id, name: String(e.name), glyph: e.glyph || '', color: e.color || '', urls: migrateUrls(e.urls) }));
+  // 内置引擎始终保留最新目录定义（未启用的不出现在列表中）
+  out.engines = out.engines.filter(e => !ENGINE_CATALOG.some(c => c.id === e.id));
+  for (const id of ['baidu', 'bing']) {
+    const c = ENGINE_CATALOG.find(x => x.id === id);
+    if (!out.engines.some(e => e.id === id)) out.engines.unshift(cloneEngine(c));
+  }
   if (!out.engines.length) out.engines = def.engines;
   if (!TYPES.some(t => t.id === out.searchType)) out.searchType = def.searchType;
+  if (!out.engines.some(e => e.id === out.engine)) out.engine = 'baidu';
   if (!out.engines.some(e => e.id === out.engine)) out.engine = out.engines[0].id;
-  if (!out.engineByType || typeof out.engineByType !== 'object') out.engineByType = {};
+  delete out.engineByType; // 旧版字段
+  if (!out.layout || typeof out.layout !== 'object') out.layout = { ...def.layout };
+  out.layout.row = Math.min(5, Math.max(1, parseInt(out.layout.row, 10) || 3));
+  out.layout.col = Math.min(8, Math.max(3, parseInt(out.layout.col, 10) || 6));
+  out.searchSuggest = out.searchSuggest !== false;
+  out.hideIconName = out.hideIconName === true;
   return out;
 }
 
@@ -129,10 +205,9 @@ const state = {
   editingId: null, // 当前正在编辑的站点 id（null = 添加）
 };
 
-const GRID_COLS = [[1200, 6], [960, 5], [720, 4]];
-const ROWS = 3;
-const cols = () => (GRID_COLS.find(([w]) => innerWidth >= w) || [0, 3])[1];
-const perPage = () => cols() * ROWS;
+const colFit = () => Math.max(3, Math.floor((innerWidth - 40) / 108));
+const cols = () => Math.min(state.data.settings.layout.col, colFit());
+const perPage = () => cols() * state.data.settings.layout.row;
 
 /* ================= 持久化与同步 ================= */
 const local = new LocalAdapter();
@@ -196,97 +271,11 @@ async function pullCloud(notify = true) {
   if (notify) toast('已从云端拉取数据');
 }
 
-/* ================= 搜索类型与引擎 ================= */
-function activeType() {
-  return TYPES.find(t => t.id === state.data.settings.searchType) || TYPES[0];
-}
-
-/** 当前类型下实际生效的引擎：优先用户为该类型选过的引擎；不支持该类型时自动换到支持的引擎 */
-function resolveEngine(typeId = activeType().id) {
-  const s = state.data.settings;
-  const byId = id => s.engines.find(e => e.id === id);
-  const supports = e => e && e.urls && !!e.urls[typeId];
-  const pref = byId(s.engineByType[typeId]) || byId(s.engine);
-  return supports(pref) ? pref : (s.engines.find(supports) || s.engines[0]);
-}
-
-function renderTypeTabs() {
-  const tabs = $('#engineTabs');
-  tabs.innerHTML = '';
-  TYPES.forEach(t => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = t.name;
-    b.className = t.id === state.data.settings.searchType ? 'active' : '';
-    b.onclick = () => {
-      state.data.settings.searchType = t.id;
-      state.data.settings.engine = resolveEngine(t.id).id;
-      persistLocal();
-      renderTypeTabs();
-      updateSearchUI();
-    };
-    tabs.append(b);
-  });
-}
-
-function updateSearchUI() {
-  const eng = resolveEngine();
-  const t = activeType();
-  const logo = $('#engineLogo');
-  const glyph = eng.glyph || (eng.name || '?')[0];
-  logo.textContent = glyph;
-  logo.style.background = eng.color || tint(eng.name);
-  logo.style.fontSize = glyph.length > 1 ? '10px' : '13px';
-  $('#searchInput').placeholder = `在${eng.name}中搜索${t.id === 'web' ? '' : t.name}，或直接输入网址`;
-}
-
-/* ---------- 引擎选择弹层 ---------- */
-function toggleEngineMenu(force) {
-  const m = $('#engineMenu');
-  if (force !== undefined) { m.hidden = !force; return; }
-  if (m.hidden) { renderEngineMenu(); m.hidden = false; }
-  else m.hidden = true;
-}
-
-function renderEngineMenu() {
-  const m = $('#engineMenu');
-  const t = activeType();
-  const cur = resolveEngine();
-  m.innerHTML = '';
-  state.data.settings.engines.filter(e => e.urls[t.id]).forEach(e => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = e.id === cur.id ? 'on' : '';
-    b.innerHTML = `<span class="eng-glyph" style="background:${e.color || tint(e.name)}">${escapeHtml(e.glyph || e.name[0])}</span>${escapeHtml(e.name)}`;
-    b.onclick = () => {
-      const s = state.data.settings;
-      s.engineByType[t.id] = e.id; // 记住该类型下选择的引擎
-      s.engine = e.id;
-      persistLocal();
-      toggleEngineMenu(false);
-      updateSearchUI();
-    };
-    m.append(b);
-  });
-  m.append(document.createElement('hr'));
-  const mg = document.createElement('button');
-  mg.textContent = '管理搜索引擎…';
-  mg.onclick = () => { toggleEngineMenu(false); openSettings(); };
-  m.append(mg);
-}
-
 /* ================= 渲染 ================= */
 function applyWallpaper() {
   const s = state.data.settings;
   const wp = WALLPAPERS.find(w => w.id === s.wallpaper) || WALLPAPERS[0];
   $('#wallpaper').style.backgroundImage = s.customWallpaper ? `url("${s.customWallpaper}")` : wp.css;
-}
-
-function tint(name) {
-  const palette = ['#f2708a', '#5aa9e6', '#7fc8a9', '#e6a157', '#9b8ce0', '#59c3c3'];
-  let h = 0;
-  for (const ch of String(name)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-  return palette[h % palette.length];
 }
 
 function iconHTML(site) {
@@ -366,6 +355,7 @@ function renderGrid() {
   const slice = state.data.sites.slice(state.page * pp, state.page * pp + pp);
   grid.style.setProperty('--cols', cols());
   grid.classList.toggle('editing', state.editMode);
+  grid.classList.toggle('hide-labels', !!state.data.settings.hideIconName);
   grid.innerHTML = '';
   if (!slice.length && !state.editMode) {
     grid.innerHTML = '<p class="empty-tip">这里空空如也，点击右上角菜单 → 「添加网址」开始使用</p>';
@@ -388,6 +378,10 @@ function renderGrid() {
     }
     dots.append(d);
   }
+
+  // 翻页箭头
+  $('#gridPrev').hidden = state.page <= 0;
+  $('#gridNext').hidden = state.page >= state.pages - 1;
 }
 
 function renderAll() {
@@ -506,6 +500,18 @@ function toggleMenu(force) {
   $('#menu').hidden = force !== undefined ? !force : !$('#menu').hidden;
 }
 
+function openSettings() {
+  renderWpGrid();
+  renderEngineList();
+  $('#wpUrl').value = state.data.settings.customWallpaper || '';
+  $('#faviconApi').value = state.data.settings.faviconApi || DEFAULT_FAVICON_API;
+  $('#optSuggest').checked = !!state.data.settings.searchSuggest;
+  $('#optHideName').checked = !!state.data.settings.hideIconName;
+  $('#layoutRow').value = String(state.data.settings.layout.row);
+  $('#layoutCol').value = String(state.data.settings.layout.col);
+  $('#dlgSettings').showModal();
+}
+
 function onMenuAction(act) {
   toggleMenu(false);
   switch (act) {
@@ -523,98 +529,186 @@ function onMenuAction(act) {
   }
 }
 
-/* ================= 设置（外观） ================= */
-function openSettings() {
-  renderWpGrid();
-  renderEngineList();
-  $('#wpUrl').value = state.data.settings.customWallpaper || '';
-  $('#faviconApi').value = state.data.settings.faviconApi || DEFAULT_FAVICON_API;
-  $('#dlgSettings').showModal();
+/* ================= 搜索类型与引擎 ================= */
+function activeType() {
+  return TYPES.find(t => t.id === state.data.settings.searchType) || TYPES[0];
 }
 
-/* ---------- 搜索引擎管理 ---------- */
-function renderEngineList() {
-  const list = $('#engineList');
-  list.innerHTML = '';
-  const engines = state.data.settings.engines;
-  engines.forEach(e => {
-    const row = document.createElement('div');
-    row.className = 'eng-row';
-    const support = TYPES.filter(t => e.urls[t.id]).map(t => t.name).join(' / ');
-    row.innerHTML = `
-      <span class="eng-glyph" style="background:${e.color || tint(e.name)}">${escapeHtml(e.glyph || (e.name || '?')[0])}</span>
-      <span class="eng-info"><b>${escapeHtml(e.name)}</b><i>${support}</i></span>
-      <button type="button" class="eng-btn" data-act="edit" title="编辑">✎</button>
-      <button type="button" class="eng-btn" data-act="del" title="删除" ${engines.length <= 1 ? 'disabled' : ''}>🗑</button>`;
-    row.querySelector('[data-act="edit"]').addEventListener('click', () => openEngineDialog(e));
-    row.querySelector('[data-act="del"]').addEventListener('click', () => removeEngine(e));
-    list.append(row);
-  });
-}
-
-function removeEngine(engine) {
+/** 当前生效的引擎（全局选择，与 inftab 一致） */
+function resolveEngine() {
   const s = state.data.settings;
-  if (s.engines.length <= 1) { toast('至少保留一个搜索引擎', 'error'); return; }
-  if (!confirm(`删除搜索引擎「${engine.name}」？`)) return;
-  s.engines = s.engines.filter(x => x.id !== engine.id);
-  if (s.engine === engine.id) s.engine = s.engines[0].id;
-  for (const k of Object.keys(s.engineByType)) {
-    if (s.engineByType[k] === engine.id) delete s.engineByType[k];
-  }
-  persist();
-  renderEngineList();
-  renderTypeTabs();
-  updateSearchUI();
-  toast(`已删除「${engine.name}」`);
+  return s.engines.find(e => e.id === s.engine) || s.engines[0];
 }
 
-function openEngineDialog(engine) {
-  $('#engDlgTitle').textContent = engine ? '编辑搜索引擎' : '添加搜索引擎';
-  $('#engId').value = engine ? engine.id : '';
-  $('#engName').value = engine ? engine.name : '';
-  const u = engine ? engine.urls : {};
-  $('#engWeb').value = u.web || '';
-  $('#engImages').value = u.images || '';
-  $('#engVideo').value = u.video || '';
-  $('#engNews').value = u.news || '';
-  $('#engMusic').value = u.music || '';
-  $('#engFormError').hidden = true;
-  $('#dlgEngine').showModal();
-  $('#engName').focus();
-}
-
-function bindEngineDialog() {
-  $('#engForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const err = $('#engFormError');
-    const showErr = msg => { err.textContent = msg; err.hidden = false; };
-    const name = $('#engName').value.trim();
-    const urls = {};
-    for (const t of TYPES) {
-      const v = $('#eng' + t.id[0].toUpperCase() + t.id.slice(1)).value.trim();
-      if (!v) continue;
-      if (!v.includes('%s')) { showErr(`「${t.name}」地址必须包含 %s 占位符`); return; }
-      urls[t.id] = v;
-    }
-    if (!name) { showErr('请填写引擎名称'); return; }
-    if (!urls.web) { showErr('请填写网页搜索地址（含 %s）'); return; }
-    const s = state.data.settings;
-    const id = $('#engId').value;
-    if (id) {
-      const eng = s.engines.find(x => x.id === id);
-      if (eng) Object.assign(eng, { name, urls });
-    } else {
-      s.engines.push({ id: uid(), name, glyph: '', color: '', urls });
-    }
-    persist();
-    $('#dlgEngine').close();
-    renderEngineList();
-    renderTypeTabs();
-    updateSearchUI();
-    toast('搜索引擎已保存');
+function renderTypeTabs() {
+  const tabs = $('#engineTabs');
+  tabs.innerHTML = '';
+  TYPES.forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = t.name;
+    b.className = t.id === state.data.settings.searchType ? 'active' : '';
+    b.onclick = () => {
+      state.data.settings.searchType = t.id;
+      persistLocal();
+      renderTypeTabs();
+      hideSug();
+    };
+    tabs.append(b);
   });
 }
 
+function updateSearchUI() {
+  const eng = resolveEngine();
+  const logo = $('#engineLogo');
+  const glyph = eng.glyph || (eng.name || '?')[0];
+  logo.textContent = glyph;
+  logo.style.background = eng.color || tint(eng.name);
+  logo.style.fontSize = glyph.length > 1 ? '10px' : '13px';
+}
+
+/* ---------- 引擎选择弹层（Logo 下拉，对齐 inftab：全部引擎 + 添加） ---------- */
+function toggleEngineMenu(force) {
+  const m = $('#engineMenu');
+  if (force !== undefined) { m.hidden = !force; return; }
+  if (m.hidden) { renderEngineMenu(); m.hidden = false; }
+  else m.hidden = true;
+}
+
+function renderEngineMenu() {
+  const m = $('#engineMenu');
+  const cur = resolveEngine();
+  m.innerHTML = '';
+  state.data.settings.engines.forEach(e => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'eng-pick' + (e.id === cur.id ? ' on' : '');
+    b.innerHTML = `<span class="eng-glyph" style="background:${e.color || tint(e.name)}">${escapeHtml(e.glyph || e.name[0])}</span><span class="eng-name">${escapeHtml(e.name)}</span>`;
+    b.onclick = () => {
+      state.data.settings.engine = e.id;
+      persistLocal();
+      toggleEngineMenu(false);
+      updateSearchUI();
+    };
+    m.append(b);
+  });
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'eng-pick add';
+  add.innerHTML = `<span class="eng-glyph plus">${SVG_PLUS}</span><span class="eng-name">添加</span>`;
+  add.onclick = () => { toggleEngineMenu(false); openEngineDialog(null); };
+  m.append(add);
+}
+
+function buildSearchUrl(eng, typeId, q) {
+  const tpl = (eng.urls && (eng.urls[typeId] || eng.urls.html)) || '';
+  const eq = encodeURIComponent(q);
+  return tpl.includes('%s') ? tpl.replace('%s', () => eq) : tpl + eq;
+}
+
+/* ---------- 搜索建议（百度 sugrec JSONP） ---------- */
+let sugTimer = null;
+let sugList = [];
+let sugIndex = -1;
+
+function hideSug() {
+  sugList = [];
+  sugIndex = -1;
+  const d = $('#sugDrop');
+  d.hidden = true;
+  d.innerHTML = '';
+}
+
+function renderSug() {
+  const d = $('#sugDrop');
+  if (!sugList.length) { hideSug(); return; }
+  d.innerHTML = sugList.map((q, i) =>
+    `<li class="${i === sugIndex ? 'active' : ''}" data-q="${escapeHtml(q)}">${escapeHtml(q)}</li>`).join('');
+  d.hidden = false;
+}
+
+async function fetchSug(q) {
+  const data = await jsonp(
+    `https://www.baidu.com/sugrec?pre=1&p=3&ie=UTF-8&json=1&prod=pc&from=pc_web&wd=${encodeURIComponent(q)}`,
+    '__navSugCb'
+  );
+  const list = (data && Array.isArray(data.g) ? data.g : []).map(x => String(x.q || '')).filter(Boolean).slice(0, 8);
+  sugList = list;
+  sugIndex = -1;
+  renderSug();
+}
+
+function jsonp(url, cbName, timeout = 2500) {
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    const timer = setTimeout(() => { cleanup(); resolve(null); }, timeout);
+    function cleanup() { clearTimeout(timer); delete window[cbName]; s.remove(); }
+    window[cbName] = data => { cleanup(); resolve(data); };
+    s.src = url + '&cb=' + cbName;
+    s.onerror = () => { cleanup(); resolve(null); };
+    document.head.append(s);
+  });
+}
+
+/* ================= 搜索 ================= */
+const LOOKS_LIKE_URL = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?(\/\S*)?$/;
+
+function doSearch(qRaw) {
+  const q = (qRaw !== undefined ? qRaw : $('#searchInput').value).trim();
+  if (!q) return;
+  let target;
+  if (!q.includes(' ') && LOOKS_LIKE_URL.test(q)) {
+    target = /^https?:\/\//i.test(q) ? q : 'https://' + q;
+  } else {
+    target = buildSearchUrl(resolveEngine(), activeType().id, q);
+  }
+  window.open(target, '_blank');
+}
+
+/* ================= Toast ================= */
+function toast(msg, type = 'info', ms = 2600) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'error' ? ' error' : '');
+  el.textContent = msg;
+  $('#toasts').append(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 350);
+  }, ms);
+}
+
+/* ================= 翻页 ================= */
+function flipPage(delta) {
+  const next = state.page + delta;
+  if (next < 0 || next >= state.pages) return;
+  state.page = next;
+  renderGrid();
+}
+
+/* ================= 菜单事件 ================= */
+function bindTopMenu() {
+  $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
+  $('#menu').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (b) onMenuAction(b.dataset.act);
+  });
+  $('#btnHome').addEventListener('click', () => {
+    toggleMenu(false);
+    state.page = 0;
+    renderGrid();
+    $('#searchInput').focus();
+  });
+  $('#logo').addEventListener('click', () => $('#dlgAbout').showModal());
+
+  document.addEventListener('click', e => {
+    if (!$('#menu').hidden && !$('#menu').contains(e.target) && !$('#btnMenu').contains(e.target)) toggleMenu(false);
+    if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
+    if (!$('#ctxMenu').hidden && !$('#ctxMenu').contains(e.target)) $('#ctxMenu').hidden = true;
+  });
+  addEventListener('blur', () => { toggleMenu(false); toggleEngineMenu(false); $('#ctxMenu').hidden = true; });
+}
+
+/* ================= 设置（外观 / 搜索 / 网格） ================= */
 function renderWpGrid() {
   const grid = $('#wpGrid');
   grid.innerHTML = '';
@@ -642,14 +736,120 @@ function bindSettingsDialog() {
   $('#btnAddEngine').addEventListener('click', () => openEngineDialog(null));
   $('#settingsSave').addEventListener('click', () => {
     const s = state.data.settings;
-    const url = $('#wpUrl').value.trim();
-    s.customWallpaper = url;
+    s.customWallpaper = $('#wpUrl').value.trim();
     s.faviconApi = $('#faviconApi').value.trim() || DEFAULT_FAVICON_API;
+    s.searchSuggest = $('#optSuggest').checked;
+    s.hideIconName = $('#optHideName').checked;
+    s.layout.row = parseInt($('#layoutRow').value, 10) || 3;
+    s.layout.col = parseInt($('#layoutCol').value, 10) || 6;
     persist();
     applyWallpaper();
     renderGrid();
     $('#dlgSettings').close();
     toast('设置已保存');
+  });
+}
+
+/* ---------- 搜索引擎管理 ---------- */
+function renderEngineList() {
+  const list = $('#engineList');
+  list.innerHTML = '';
+  const engines = state.data.settings.engines;
+  engines.forEach(e => {
+    const row = document.createElement('div');
+    row.className = 'eng-row';
+    const support = TYPES.filter(t => e.urls[t.id]).map(t => t.name).join(' / ');
+    row.innerHTML = `
+      <span class="eng-glyph" style="background:${e.color || tint(e.name)}">${escapeHtml(e.glyph || (e.name || '?')[0])}</span>
+      <span class="eng-info"><b>${escapeHtml(e.name)}</b><i>${support}</i></span>
+      <button type="button" class="eng-btn" data-act="edit" title="编辑">✎</button>
+      <button type="button" class="eng-btn" data-act="del" title="移除" ${engines.length <= 1 ? 'disabled' : ''}>🗑</button>`;
+    row.querySelector('[data-act="edit"]').addEventListener('click', () => openEngineDialog(e));
+    row.querySelector('[data-act="del"]').addEventListener('click', () => removeEngine(e));
+    list.append(row);
+  });
+}
+
+function removeEngine(engine) {
+  const s = state.data.settings;
+  if (s.engines.length <= 1) { toast('至少保留一个搜索引擎', 'error'); return; }
+  if (!confirm(`移除搜索引擎「${engine.name}」？`)) return;
+  s.engines = s.engines.filter(x => x.id !== engine.id);
+  if (s.engine === engine.id) s.engine = s.engines[0].id;
+  persist();
+  renderEngineList();
+  updateSearchUI();
+  toast(`已移除「${engine.name}」（引擎库中可随时重新启用）`);
+}
+
+function openEngineDialog(engine) {
+  const adding = !engine;
+  $('#engDlgTitle').textContent = adding ? '添加搜索引擎' : '编辑搜索引擎';
+  $('#engId').value = engine ? engine.id : '';
+  $('#engName').value = engine ? engine.name : '';
+  const u = engine ? engine.urls : {};
+  $('#engHtml').value = u.html || '';
+  $('#engPhotos').value = u.photos || '';
+  $('#engVideos').value = u.videos || '';
+  $('#engNews').value = u.news || '';
+  $('#engMap').value = u.map || '';
+  $('#engFormError').hidden = true;
+  $('#engCatalogBox').hidden = !adding;
+  if (adding) renderEngineCatalog();
+  $('#dlgEngine').showModal();
+  if (adding && $('#engCatalog').children.length) return; // 先看引擎库
+  $('#engName').focus();
+}
+
+function renderEngineCatalog() {
+  const box = $('#engCatalog');
+  box.innerHTML = '';
+  const s = state.data.settings;
+  ENGINE_CATALOG.filter(c => !s.engines.some(e => e.id === c.id)).forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cat-item';
+    b.innerHTML = `<span class="eng-glyph" style="background:${c.color}">${escapeHtml(c.glyph)}</span><span class="eng-name">${escapeHtml(c.name)}</span>`;
+    b.onclick = () => {
+      s.engines.push(cloneEngine(c));
+      persist();
+      renderEngineCatalog();
+      renderEngineList();
+      updateSearchUI();
+      toast(`已启用「${c.name}」`);
+    };
+    box.append(b);
+  });
+  if (!box.children.length) box.innerHTML = '<p class="hint">引擎库中的引擎已全部启用</p>';
+}
+
+function bindEngineDialog() {
+  $('#engForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const err = $('#engFormError');
+    const showErr = msg => { err.textContent = msg; err.hidden = false; };
+    const name = $('#engName').value.trim();
+    const urls = {};
+    for (const t of TYPES) {
+      const id = 'eng' + t.id[0].toUpperCase() + t.id.slice(1);
+      const v = $('#' + id).value.trim();
+      if (v) urls[t.id] = v;
+    }
+    if (!name) { showErr('请填写引擎名称'); return; }
+    if (!urls.html) { showErr('请填写网页搜索地址'); return; }
+    const s = state.data.settings;
+    const id = $('#engId').value;
+    if (id) {
+      const eng = s.engines.find(x => x.id === id);
+      if (eng) Object.assign(eng, { name, urls });
+    } else {
+      s.engines.push({ id: uid(), name, glyph: '', color: '', urls });
+    }
+    persist();
+    $('#dlgEngine').close();
+    renderEngineList();
+    updateSearchUI();
+    toast('搜索引擎已保存');
   });
 }
 
@@ -743,68 +943,50 @@ function bindImport() {
   });
 }
 
-/* ================= 搜索 ================= */
-const LOOKS_LIKE_URL = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?(\/\S*)?$/;
-
-function doSearch() {
-  const q = $('#searchInput').value.trim();
-  if (!q) return;
-  let target;
-  if (!q.includes(' ') && LOOKS_LIKE_URL.test(q)) {
-    target = /^https?:\/\//i.test(q) ? q : 'https://' + q;
-  } else {
-    const t = activeType();
-    const eng = resolveEngine(t.id);
-    const tpl = eng.urls[t.id] || eng.urls.web;
-    target = tpl.includes('%s') ? tpl.replace('%s', () => encodeURIComponent(q)) : tpl + encodeURIComponent(q);
-  }
-  window.open(target, '_blank');
-}
-
-/* ================= Toast ================= */
-function toast(msg, type = 'info', ms = 2600) {
-  const el = document.createElement('div');
-  el.className = 'toast' + (type === 'error' ? ' error' : '');
-  el.textContent = msg;
-  $('#toasts').append(el);
-  setTimeout(() => {
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 350);
-  }, ms);
-}
-
-/* ================= 翻页 ================= */
-function flipPage(delta) {
-  const next = state.page + delta;
-  if (next < 0 || next >= state.pages) return;
-  state.page = next;
-  renderGrid();
-}
-
 /* ================= 事件绑定 ================= */
 function bindEvents() {
-  $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
-  $('#menu').addEventListener('click', e => {
-    const b = e.target.closest('button[data-act]');
-    if (b) onMenuAction(b.dataset.act);
-  });
-  $('#btnHome').addEventListener('click', () => {
-    toggleMenu(false);
-    state.page = 0;
-    renderGrid();
-    $('#searchInput').focus();
-  });
-  $('#logo').addEventListener('click', () => $('#dlgAbout').showModal());
+  bindTopMenu();
 
-  document.addEventListener('click', e => {
-    if (!$('#menu').hidden && !$('#menu').contains(e.target) && !$('#btnMenu').contains(e.target)) toggleMenu(false);
-    if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
-    if (!$('#ctxMenu').hidden) $('#ctxMenu').hidden = true;
+  $('#searchForm').addEventListener('submit', e => {
+    e.preventDefault();
+    hideSug();
+    doSearch();
   });
-  addEventListener('blur', () => { toggleMenu(false); $('#ctxMenu').hidden = true; });
-
-  $('#searchForm').addEventListener('submit', e => { e.preventDefault(); doSearch(); });
   $('#engineLogo').addEventListener('click', e => { e.stopPropagation(); toggleEngineMenu(); });
+
+  // 搜索建议
+  const input = $('#searchInput');
+  input.addEventListener('input', () => {
+    clearTimeout(sugTimer);
+    const q = input.value.trim();
+    if (!state.data.settings.searchSuggest || !q || q.includes(' ') || LOOKS_LIKE_URL.test(q)) { hideSug(); return; }
+    sugTimer = setTimeout(() => fetchSug(q), 180);
+  });
+  input.addEventListener('keydown', e => {
+    if ($('#sugDrop').hidden) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      sugIndex = e.key === 'ArrowDown'
+        ? (sugIndex + 1) % sugList.length
+        : (sugIndex - 1 + sugList.length) % sugList.length;
+      renderSug();
+    } else if (e.key === 'Enter' && sugIndex >= 0) {
+      e.preventDefault();
+      const q = sugList[sugIndex];
+      hideSug();
+      doSearch(q);
+    } else if (e.key === 'Escape') {
+      hideSug();
+    }
+  });
+  $('#sugDrop').addEventListener('mousedown', e => {
+    const li = e.target.closest('li[data-q]');
+    if (!li) return;
+    e.preventDefault();
+    hideSug();
+    doSearch(li.dataset.q);
+  });
+  $('#searchInput').addEventListener('blur', () => setTimeout(hideSug, 150));
 
   bindSiteDialog();
   bindSettingsDialog();
@@ -825,7 +1007,7 @@ function bindEvents() {
 
   // 键盘
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleMenu(false); toggleEngineMenu(false); $('#ctxMenu').hidden = true; }
+    if (e.key === 'Escape') { toggleMenu(false); toggleEngineMenu(false); hideSug(); $('#ctxMenu').hidden = true; }
     const tag = document.activeElement.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
@@ -833,7 +1015,7 @@ function bindEvents() {
       $('#searchInput').focus();
       $('#searchInput').select();
     }
-    if (!typing && !/^dialog/i.test(document.activeElement.tagName)) {
+    if (!typing) {
       if (e.key === 'ArrowRight') flipPage(1);
       if (e.key === 'ArrowLeft') flipPage(-1);
     }
@@ -848,6 +1030,10 @@ function bindEvents() {
     else if (state.page > 0) { flipPage(-1); wheelAt = now; }
   }, { passive: true });
 
+  // 翻页箭头
+  $('#gridPrev').addEventListener('click', () => flipPage(-1));
+  $('#gridNext').addEventListener('click', () => flipPage(1));
+
   addEventListener('resize', debounce(renderGrid, 200));
 }
 
@@ -861,6 +1047,7 @@ async function init() {
   } else {
     state.data.settings = normalizeSettings(state.data.settings);
     if (!Array.isArray(state.data.sites)) state.data.sites = [];
+    persistLocal();
   }
   bindEvents();
   renderAll();
