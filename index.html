@@ -41,6 +41,7 @@
         <button type="button" class="engine-logo" id="engineLogo" title="切换搜索引擎"></button>
         <input id="searchInput" type="text" placeholder="输入关键字搜索" autocomplete="off" spellcheck="false">
       </form>
+      <nav class="menu engine-menu" id="engineMenu" hidden></nav>
     </section>
 
     <section class="grid-area" id="gridArea">
@@ -82,6 +83,11 @@
       <button class="dlg-close" data-close title="关闭">&times;</button>
     </div>
     <div class="dlg-body">
+      <section>
+        <h4>搜索引擎</h4>
+        <div class="engine-list" id="engineList"></div>
+        <button type="button" class="btn" id="btnAddEngine">＋ 添加搜索引擎</button>
+      </section>
       <section>
         <h4>壁纸</h4>
         <div class="wp-grid" id="wpGrid"></div>
@@ -134,6 +140,32 @@
       <button class="btn" id="syncPull">从云端拉取</button>
       <button class="btn primary" id="syncPush">推送到云端</button>
     </div>
+  </dialog>
+
+  <!-- 添加 / 编辑搜索引擎 -->
+  <dialog id="dlgEngine">
+    <form class="dlg-form" id="engForm" novalidate>
+      <h3 id="engDlgTitle">添加搜索引擎</h3>
+      <input type="hidden" id="engId">
+      <label>名称
+        <input id="engName" maxlength="16" placeholder="如：掘金" required>
+      </label>
+      <label>网页搜索地址 <span class="hint">必须包含 %s，代表搜索词</span>
+        <input id="engWeb" placeholder="https://example.com/search?q=%s">
+      </label>
+      <details>
+        <summary>其他搜索类型地址（可选，同样包含 %s）</summary>
+        <label>图片<input id="engImages" placeholder="https://.../images?q=%s"></label>
+        <label>视频<input id="engVideo" placeholder="https://.../video?q=%s"></label>
+        <label>新闻<input id="engNews" placeholder="https://.../news?q=%s"></label>
+        <label>音乐<input id="engMusic" placeholder="https://.../music?q=%s"></label>
+      </details>
+      <p class="form-error" id="engFormError" hidden></p>
+      <div class="dlg-foot">
+        <button type="button" class="btn" data-close>取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </form>
   </dialog>
 
   <!-- 关于 -->

@@ -9,17 +9,51 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 const SVG_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const SVG_X = '✕';
 
-/* ================= 搜索引擎 ================= */
-const ENGINES = [
-  { id: 'baidu',  name: '百度',   glyph: '百',  color: '#2932e1', build: q => `https://www.baidu.com/s?wd=${q}` },
-  { id: 'bing',   name: '必应',   glyph: 'b',   color: '#008373', build: q => `https://www.bing.com/search?q=${q}` },
-  { id: 'google', name: '谷歌',   glyph: 'G',   color: '#4285f4', build: q => `https://www.google.com/search?q=${q}` },
-  { id: 'sogou',  name: '搜狗',   glyph: '搜',  color: '#ff6f37', build: q => `https://www.sogou.com/web?query=${q}` },
-  { id: 'so360',  name: '360',    glyph: '360', color: '#3dbd38', build: q => `https://www.so.com/s?q=${q}` },
-  { id: 'zhihu',  name: '知乎',   glyph: '知',  color: '#056de8', build: q => `https://www.zhihu.com/search?type=content&q=${q}` },
-  { id: 'github', name: 'GitHub', glyph: 'GH',  color: '#24292f', build: q => `https://github.com/search?q=${q}` },
-  { id: 'taobao', name: '淘宝',   glyph: '淘',  color: '#ff5000', build: q => `https://s.taobao.com/search?q=${q}` },
+/* ================= 搜索类型与引擎 ================= */
+// 顶部 tab：搜索类型，各引擎按类型提供地址模板（引擎存在 settings.engines，可自由增删改）
+const TYPES = [
+  { id: 'web',    name: '网页' },
+  { id: 'images', name: '图片' },
+  { id: 'video',  name: '视频' },
+  { id: 'news',   name: '新闻' },
+  { id: 'music',  name: '音乐' },
 ];
+
+// 地址模板中的 %s 代表搜索词
+function seedEngines() {
+  return [
+    { id: 'baidu', name: '百度', glyph: '百', color: '#2932e1', urls: {
+      web: 'https://www.baidu.com/s?wd=%s',
+      images: 'https://image.baidu.com/search/index?tn=baiduimage&word=%s',
+      video: 'https://video.baidu.com/search?word=%s',
+      news: 'https://www.baidu.com/s?tn=news&word=%s',
+      music: 'https://music.baidu.com/search?key=%s' } },
+    { id: 'bing', name: '必应', glyph: 'b', color: '#008373', urls: {
+      web: 'https://www.bing.com/search?q=%s',
+      images: 'https://www.bing.com/images/search?q=%s',
+      video: 'https://www.bing.com/videos/search?q=%s',
+      news: 'https://www.bing.com/news/search?q=%s' } },
+    { id: 'google', name: '谷歌', glyph: 'G', color: '#4285f4', urls: {
+      web: 'https://www.google.com/search?q=%s',
+      images: 'https://www.google.com/search?q=%s&tbm=isch',
+      video: 'https://www.google.com/search?q=%s&tbm=vid',
+      news: 'https://www.google.com/search?q=%s&tbm=nws' } },
+    { id: 'sogou', name: '搜狗', glyph: '搜', color: '#ff6f37', urls: {
+      web: 'https://www.sogou.com/web?query=%s',
+      images: 'https://pic.sogou.com/pics?query=%s',
+      video: 'https://v.sogou.com/v?query=%s',
+      news: 'https://news.sogou.com/news?query=%s' } },
+    { id: 'so360', name: '360搜索', glyph: '360', color: '#3dbd38', urls: {
+      web: 'https://www.so.com/s?q=%s',
+      images: 'https://image.so.com/j?q=%s',
+      video: 'https://video.so.com/v?q=%s',
+      news: 'https://news.so.com/ns?q=%s' } },
+    { id: 'zhihu', name: '知乎', glyph: '知', color: '#056de8', urls: { web: 'https://www.zhihu.com/search?type=content&q=%s' } },
+    { id: 'github', name: 'GitHub', glyph: 'GH', color: '#24292f', urls: { web: 'https://github.com/search?q=%s' } },
+    { id: 'taobao', name: '淘宝', glyph: '淘', color: '#ff5000', urls: { web: 'https://s.taobao.com/search?q=%s' } },
+    { id: 'weibo', name: '微博', glyph: '微', color: '#e6162d', urls: { web: 'https://s.weibo.com/weibo?q=%s' } },
+  ];
+}
 
 /* ================= 内置壁纸 ================= */
 const WALLPAPERS = [
@@ -36,12 +70,29 @@ const DEFAULT_FAVICON_API = 'https://api.iowen.cn/favicon/{host}.png';
 function seedSettings() {
   return {
     engine: 'baidu',
+    searchType: 'web',
+    engineByType: {},
+    engines: seedEngines(),
     wallpaper: 'preset:forest',
     customWallpaper: '',
     faviconApi: DEFAULT_FAVICON_API,
     lastSyncAt: null,
     sync: { type: 'local', token: '', gistId: '', filename: DATA_FILE, autoSync: true },
   };
+}
+
+/** 校验/修补设置：兼容旧版数据与被裁剪的云端数据 */
+function normalizeSettings(s = {}) {
+  const def = seedSettings();
+  const out = { ...def, ...s };
+  out.engines = (Array.isArray(s.engines) ? s.engines : def.engines)
+    .filter(e => e && e.id && e.name && e.urls && typeof e.urls.web === 'string')
+    .map(e => ({ id: e.id, name: String(e.name), glyph: e.glyph || '', color: e.color || '', urls: { ...e.urls } }));
+  if (!out.engines.length) out.engines = def.engines;
+  if (!TYPES.some(t => t.id === out.searchType)) out.searchType = def.searchType;
+  if (!out.engines.some(e => e.id === out.engine)) out.engine = out.engines[0].id;
+  if (!out.engineByType || typeof out.engineByType !== 'object') out.engineByType = {};
+  return out;
 }
 
 function seedSites() {
@@ -137,7 +188,7 @@ async function pullCloud(notify = true) {
       id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
       icon: s.icon || '', badge: !!s.badge,
     })),
-    settings: { ...seedSettings(), ...(payload.settings || {}), sync: keepSync },
+    settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync },
   };
   state.page = 0;
   persistLocal();
@@ -145,33 +196,86 @@ async function pullCloud(notify = true) {
   if (notify) toast('已从云端拉取数据');
 }
 
-/* ================= 渲染 ================= */
-function currentEngine() {
-  return ENGINES.find(e => e.id === state.data.settings.engine) || ENGINES[0];
+/* ================= 搜索类型与引擎 ================= */
+function activeType() {
+  return TYPES.find(t => t.id === state.data.settings.searchType) || TYPES[0];
 }
 
-function renderEngines() {
+/** 当前类型下实际生效的引擎：优先用户为该类型选过的引擎；不支持该类型时自动换到支持的引擎 */
+function resolveEngine(typeId = activeType().id) {
+  const s = state.data.settings;
+  const byId = id => s.engines.find(e => e.id === id);
+  const supports = e => e && e.urls && !!e.urls[typeId];
+  const pref = byId(s.engineByType[typeId]) || byId(s.engine);
+  return supports(pref) ? pref : (s.engines.find(supports) || s.engines[0]);
+}
+
+function renderTypeTabs() {
   const tabs = $('#engineTabs');
   tabs.innerHTML = '';
-  ENGINES.forEach(e => {
+  TYPES.forEach(t => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = e.name;
-    b.className = e.id === state.data.settings.engine ? 'active' : '';
-    b.onclick = () => { state.data.settings.engine = e.id; persistLocal(); renderEngines(); updateSearchUI(); };
+    b.textContent = t.name;
+    b.className = t.id === state.data.settings.searchType ? 'active' : '';
+    b.onclick = () => {
+      state.data.settings.searchType = t.id;
+      state.data.settings.engine = resolveEngine(t.id).id;
+      persistLocal();
+      renderTypeTabs();
+      updateSearchUI();
+    };
     tabs.append(b);
   });
 }
 
 function updateSearchUI() {
-  const e = currentEngine();
+  const eng = resolveEngine();
+  const t = activeType();
   const logo = $('#engineLogo');
-  logo.textContent = e.glyph;
-  logo.style.background = e.color;
-  logo.style.fontSize = e.glyph.length > 1 ? '10px' : '13px';
-  $('#searchInput').placeholder = `在${e.name}中搜索，或直接输入网址`;
+  const glyph = eng.glyph || (eng.name || '?')[0];
+  logo.textContent = glyph;
+  logo.style.background = eng.color || tint(eng.name);
+  logo.style.fontSize = glyph.length > 1 ? '10px' : '13px';
+  $('#searchInput').placeholder = `在${eng.name}中搜索${t.id === 'web' ? '' : t.name}，或直接输入网址`;
 }
 
+/* ---------- 引擎选择弹层 ---------- */
+function toggleEngineMenu(force) {
+  const m = $('#engineMenu');
+  if (force !== undefined) { m.hidden = !force; return; }
+  if (m.hidden) { renderEngineMenu(); m.hidden = false; }
+  else m.hidden = true;
+}
+
+function renderEngineMenu() {
+  const m = $('#engineMenu');
+  const t = activeType();
+  const cur = resolveEngine();
+  m.innerHTML = '';
+  state.data.settings.engines.filter(e => e.urls[t.id]).forEach(e => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = e.id === cur.id ? 'on' : '';
+    b.innerHTML = `<span class="eng-glyph" style="background:${e.color || tint(e.name)}">${escapeHtml(e.glyph || e.name[0])}</span>${escapeHtml(e.name)}`;
+    b.onclick = () => {
+      const s = state.data.settings;
+      s.engineByType[t.id] = e.id; // 记住该类型下选择的引擎
+      s.engine = e.id;
+      persistLocal();
+      toggleEngineMenu(false);
+      updateSearchUI();
+    };
+    m.append(b);
+  });
+  m.append(document.createElement('hr'));
+  const mg = document.createElement('button');
+  mg.textContent = '管理搜索引擎…';
+  mg.onclick = () => { toggleEngineMenu(false); openSettings(); };
+  m.append(mg);
+}
+
+/* ================= 渲染 ================= */
 function applyWallpaper() {
   const s = state.data.settings;
   const wp = WALLPAPERS.find(w => w.id === s.wallpaper) || WALLPAPERS[0];
@@ -287,7 +391,7 @@ function renderGrid() {
 }
 
 function renderAll() {
-  renderEngines();
+  renderTypeTabs();
   updateSearchUI();
   applyWallpaper();
   renderGrid();
@@ -411,12 +515,7 @@ function onMenuAction(act) {
       $('#menuEdit').classList.toggle('on', state.editMode);
       renderGrid();
       break;
-    case 'settings':
-      renderWpGrid();
-      $('#wpUrl').value = state.data.settings.customWallpaper || '';
-      $('#faviconApi').value = state.data.settings.faviconApi || DEFAULT_FAVICON_API;
-      $('#dlgSettings').showModal();
-      break;
+    case 'settings': openSettings(); break;
     case 'sync': fillSyncDialog(); $('#dlgSync').showModal(); break;
     case 'import': $('#importFile').click(); break;
     case 'export': exportData(); break;
@@ -425,6 +524,97 @@ function onMenuAction(act) {
 }
 
 /* ================= 设置（外观） ================= */
+function openSettings() {
+  renderWpGrid();
+  renderEngineList();
+  $('#wpUrl').value = state.data.settings.customWallpaper || '';
+  $('#faviconApi').value = state.data.settings.faviconApi || DEFAULT_FAVICON_API;
+  $('#dlgSettings').showModal();
+}
+
+/* ---------- 搜索引擎管理 ---------- */
+function renderEngineList() {
+  const list = $('#engineList');
+  list.innerHTML = '';
+  const engines = state.data.settings.engines;
+  engines.forEach(e => {
+    const row = document.createElement('div');
+    row.className = 'eng-row';
+    const support = TYPES.filter(t => e.urls[t.id]).map(t => t.name).join(' / ');
+    row.innerHTML = `
+      <span class="eng-glyph" style="background:${e.color || tint(e.name)}">${escapeHtml(e.glyph || (e.name || '?')[0])}</span>
+      <span class="eng-info"><b>${escapeHtml(e.name)}</b><i>${support}</i></span>
+      <button type="button" class="eng-btn" data-act="edit" title="编辑">✎</button>
+      <button type="button" class="eng-btn" data-act="del" title="删除" ${engines.length <= 1 ? 'disabled' : ''}>🗑</button>`;
+    row.querySelector('[data-act="edit"]').addEventListener('click', () => openEngineDialog(e));
+    row.querySelector('[data-act="del"]').addEventListener('click', () => removeEngine(e));
+    list.append(row);
+  });
+}
+
+function removeEngine(engine) {
+  const s = state.data.settings;
+  if (s.engines.length <= 1) { toast('至少保留一个搜索引擎', 'error'); return; }
+  if (!confirm(`删除搜索引擎「${engine.name}」？`)) return;
+  s.engines = s.engines.filter(x => x.id !== engine.id);
+  if (s.engine === engine.id) s.engine = s.engines[0].id;
+  for (const k of Object.keys(s.engineByType)) {
+    if (s.engineByType[k] === engine.id) delete s.engineByType[k];
+  }
+  persist();
+  renderEngineList();
+  renderTypeTabs();
+  updateSearchUI();
+  toast(`已删除「${engine.name}」`);
+}
+
+function openEngineDialog(engine) {
+  $('#engDlgTitle').textContent = engine ? '编辑搜索引擎' : '添加搜索引擎';
+  $('#engId').value = engine ? engine.id : '';
+  $('#engName').value = engine ? engine.name : '';
+  const u = engine ? engine.urls : {};
+  $('#engWeb').value = u.web || '';
+  $('#engImages').value = u.images || '';
+  $('#engVideo').value = u.video || '';
+  $('#engNews').value = u.news || '';
+  $('#engMusic').value = u.music || '';
+  $('#engFormError').hidden = true;
+  $('#dlgEngine').showModal();
+  $('#engName').focus();
+}
+
+function bindEngineDialog() {
+  $('#engForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const err = $('#engFormError');
+    const showErr = msg => { err.textContent = msg; err.hidden = false; };
+    const name = $('#engName').value.trim();
+    const urls = {};
+    for (const t of TYPES) {
+      const v = $('#eng' + t.id[0].toUpperCase() + t.id.slice(1)).value.trim();
+      if (!v) continue;
+      if (!v.includes('%s')) { showErr(`「${t.name}」地址必须包含 %s 占位符`); return; }
+      urls[t.id] = v;
+    }
+    if (!name) { showErr('请填写引擎名称'); return; }
+    if (!urls.web) { showErr('请填写网页搜索地址（含 %s）'); return; }
+    const s = state.data.settings;
+    const id = $('#engId').value;
+    if (id) {
+      const eng = s.engines.find(x => x.id === id);
+      if (eng) Object.assign(eng, { name, urls });
+    } else {
+      s.engines.push({ id: uid(), name, glyph: '', color: '', urls });
+    }
+    persist();
+    $('#dlgEngine').close();
+    renderEngineList();
+    renderTypeTabs();
+    updateSearchUI();
+    toast('搜索引擎已保存');
+  });
+}
+
 function renderWpGrid() {
   const grid = $('#wpGrid');
   grid.innerHTML = '';
@@ -449,6 +639,7 @@ function renderWpGrid() {
 }
 
 function bindSettingsDialog() {
+  $('#btnAddEngine').addEventListener('click', () => openEngineDialog(null));
   $('#settingsSave').addEventListener('click', () => {
     const s = state.data.settings;
     const url = $('#wpUrl').value.trim();
@@ -541,7 +732,7 @@ function bindImport() {
         const payload = JSON.parse(reader.result);
         if (!Array.isArray(payload.sites)) throw new Error('缺少 sites 字段');
         const keepSync = state.data.settings.sync;
-        state.data = { version: 1, sites: payload.sites, settings: { ...seedSettings(), ...(payload.settings || {}), sync: keepSync } };
+        state.data = { version: 1, sites: payload.sites, settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync } };
         state.page = 0;
         persist();
         renderAll();
@@ -562,7 +753,10 @@ function doSearch() {
   if (!q.includes(' ') && LOOKS_LIKE_URL.test(q)) {
     target = /^https?:\/\//i.test(q) ? q : 'https://' + q;
   } else {
-    target = currentEngine().build(encodeURIComponent(q));
+    const t = activeType();
+    const eng = resolveEngine(t.id);
+    const tpl = eng.urls[t.id] || eng.urls.web;
+    target = tpl.includes('%s') ? tpl.replace('%s', () => encodeURIComponent(q)) : tpl + encodeURIComponent(q);
   }
   window.open(target, '_blank');
 }
@@ -604,22 +798,17 @@ function bindEvents() {
 
   document.addEventListener('click', e => {
     if (!$('#menu').hidden && !$('#menu').contains(e.target) && !$('#btnMenu').contains(e.target)) toggleMenu(false);
+    if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
     if (!$('#ctxMenu').hidden) $('#ctxMenu').hidden = true;
   });
   addEventListener('blur', () => { toggleMenu(false); $('#ctxMenu').hidden = true; });
 
   $('#searchForm').addEventListener('submit', e => { e.preventDefault(); doSearch(); });
-  $('#engineLogo').addEventListener('click', () => {
-    // 循环切换搜索引擎
-    const i = ENGINES.findIndex(x => x.id === state.data.settings.engine);
-    state.data.settings.engine = ENGINES[(i + 1) % ENGINES.length].id;
-    persistLocal();
-    renderEngines();
-    updateSearchUI();
-  });
+  $('#engineLogo').addEventListener('click', e => { e.stopPropagation(); toggleEngineMenu(); });
 
   bindSiteDialog();
   bindSettingsDialog();
+  bindEngineDialog();
   bindSyncDialog();
   bindImport();
 
@@ -636,7 +825,7 @@ function bindEvents() {
 
   // 键盘
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleMenu(false); $('#ctxMenu').hidden = true; }
+    if (e.key === 'Escape') { toggleMenu(false); toggleEngineMenu(false); $('#ctxMenu').hidden = true; }
     const tag = document.activeElement.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
@@ -666,10 +855,12 @@ function bindEvents() {
 async function init() {
   state.data = await local.load();
   const fresh = !state.data;
-  if (fresh) state.data = { version: 1, sites: seedSites(), settings: seedSettings() };
-  if (fresh || !Array.isArray(state.data.sites)) {
-    if (!Array.isArray(state.data.sites)) state.data.sites = [];
+  if (fresh) {
+    state.data = { version: 1, sites: seedSites(), settings: seedSettings() };
     persistLocal();
+  } else {
+    state.data.settings = normalizeSettings(state.data.settings);
+    if (!Array.isArray(state.data.sites)) state.data.sites = [];
   }
   bindEvents();
   renderAll();
