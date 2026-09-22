@@ -19,11 +19,11 @@ function tint(name) {
 /* ================= 搜索类型与引擎（对齐 inftab） ================= */
 // 顶部 tab：搜索类型。每个引擎按类型提供地址模板，搜索词直接拼接在地址末尾（或替换 %s）。
 const TYPES = [
-  { id: 'html',   name: 'html' },
-  { id: 'photos', name: 'photos' },
-  { id: 'news',   name: 'news' },
-  { id: 'videos', name: 'videos' },
-  { id: 'map',    name: 'map' },
+  { id: 'html',   name: '网页' },
+  { id: 'photos', name: '图片' },
+  { id: 'news',   name: '新闻' },
+  { id: 'videos', name: '视频' },
+  { id: 'map',    name: '地图' },
 ];
 
 // 内置引擎库（baidu/bing 地址原样取自 inftab 默认数据，其余按各家官方搜索拼装）
@@ -122,7 +122,7 @@ function seedSettings() {
     engine: 'baidu',
     searchType: 'html',
     engines: seedEngines(),
-    layout: { row: 3, col: 6 },
+    layout: { mode: 'auto', row: 3, col: 6 },
     searchSuggest: true,
     hideIconName: false,
     wallpaper: 'preset:forest',
@@ -164,8 +164,9 @@ function normalizeSettings(s = {}) {
   if (!out.engines.some(e => e.id === out.engine)) out.engine = out.engines[0].id;
   delete out.engineByType; // 旧版字段
   if (!out.layout || typeof out.layout !== 'object') out.layout = { ...def.layout };
+  if (out.layout.mode !== 'custom') out.layout.mode = 'auto';
   out.layout.row = Math.min(5, Math.max(1, parseInt(out.layout.row, 10) || 3));
-  out.layout.col = Math.min(8, Math.max(3, parseInt(out.layout.col, 10) || 6));
+  out.layout.col = Math.min(12, Math.max(3, parseInt(out.layout.col, 10) || 6));
   out.searchSuggest = out.searchSuggest !== false;
   out.hideIconName = out.hideIconName === true;
   return out;
@@ -203,11 +204,30 @@ const state = {
   editMode: false,
   dragId: null,
   editingId: null, // 当前正在编辑的站点 id（null = 添加）
+  layout: { cols: 6, rows: 3, card: 98 },
 };
 
-const colFit = () => Math.max(3, Math.floor((innerWidth - 40) / 108));
-const cols = () => Math.min(state.data.settings.layout.col, colFit());
-const perPage = () => cols() * state.data.settings.layout.row;
+/** 依据屏幕尺寸计算网格布局：自动模式铺满可用宽高，自定义模式按设置的行列数并尽量放大图标 */
+function computeLayout() {
+  const s = state.data.settings.layout;
+  const vw = innerWidth, vh = innerHeight;
+  let colsN, rowsN, card;
+  if (s.mode === 'custom') {
+    colsN = Math.min(s.col, Math.max(3, Math.floor((vw - 40) / 106)));
+    rowsN = s.row;
+    card = Math.max(88, Math.min(128, Math.floor(Math.min(vw * 0.94, 1720) / colsN) - 8));
+  } else {
+    const usableW = Math.min(vw * 0.94, 1760);
+    colsN = Math.max(4, Math.min(12, Math.floor(usableW / 148)));
+    card = Math.max(96, Math.min(150, Math.floor(usableW / colsN) - 8));
+    const areaTop = $('#gridArea').getBoundingClientRect().top;
+    const availH = Math.max(220, vh - areaTop - 96); // 预留翻页圆点与页脚
+    rowsN = Math.max(2, Math.min(6, Math.floor((availH - 16) / (card * 1.42))));
+  }
+  state.layout = { cols: colsN, rows: rowsN, card };
+}
+
+const perPage = () => state.layout.cols * state.layout.rows;
 
 /* ================= 持久化与同步 ================= */
 const local = new LocalAdapter();
@@ -347,13 +367,15 @@ function addCardEl() {
 
 function renderGrid() {
   const grid = $('#grid'), dots = $('#dots');
+  computeLayout();
   const pp = perPage();
   const total = state.data.sites.length + (state.editMode ? 1 : 0);
   state.pages = Math.max(1, Math.ceil(total / pp));
   state.page = Math.min(state.page, state.pages - 1);
 
   const slice = state.data.sites.slice(state.page * pp, state.page * pp + pp);
-  grid.style.setProperty('--cols', cols());
+  grid.style.setProperty('--cols', state.layout.cols);
+  grid.style.setProperty('--card', state.layout.card + 'px');
   grid.classList.toggle('editing', state.editMode);
   grid.classList.toggle('hide-labels', !!state.data.settings.hideIconName);
   grid.innerHTML = '';
@@ -507,6 +529,7 @@ function openSettings() {
   $('#faviconApi').value = state.data.settings.faviconApi || DEFAULT_FAVICON_API;
   $('#optSuggest').checked = !!state.data.settings.searchSuggest;
   $('#optHideName').checked = !!state.data.settings.hideIconName;
+  $('#layoutMode').value = state.data.settings.layout.mode;
   $('#layoutRow').value = String(state.data.settings.layout.row);
   $('#layoutCol').value = String(state.data.settings.layout.col);
   $('#dlgSettings').showModal();
@@ -740,8 +763,10 @@ function bindSettingsDialog() {
     s.faviconApi = $('#faviconApi').value.trim() || DEFAULT_FAVICON_API;
     s.searchSuggest = $('#optSuggest').checked;
     s.hideIconName = $('#optHideName').checked;
+    s.layout.mode = $('#layoutMode').value === 'custom' ? 'custom' : 'auto';
     s.layout.row = parseInt($('#layoutRow').value, 10) || 3;
     s.layout.col = parseInt($('#layoutCol').value, 10) || 6;
+    state.page = 0;
     persist();
     applyWallpaper();
     renderGrid();

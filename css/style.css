@@ -72,10 +72,10 @@ body {
 }
 
 /* ---------- 搜索 ---------- */
-.search-area { width: min(560px, 90vw); }
 .engine-tabs {
-  display: flex; justify-content: center; gap: 20px;
-  margin-bottom: 12px;
+  width: min(560px, 90vw);
+  margin: 0 auto 12px;
+  display: flex; justify-content: flex-start; gap: 20px;
 }
 .engine-tabs button {
   border: none; background: none; cursor: pointer;
@@ -88,7 +88,9 @@ body {
 
 .search-bar {
   display: flex; align-items: center;
+  width: min(560px, 90vw);
   height: 44px; padding: 0 16px 0 9px;
+  margin: 0 auto;
   background: rgba(255,255,255,.97);
   border-radius: 22px;
   box-shadow: 0 6px 24px rgba(0,0,0,.18);
@@ -105,25 +107,29 @@ body {
 }
 .search-bar input::placeholder { color: #9aa0a6; }
 
-/* ---------- 引擎选择弹层（横向，对齐 inftab） ---------- */
-.search-area { position: relative; }
+/* ---------- 引擎选择面板（嵌在搜索框与图标之间，不遮挡图标） ---------- */
+.search-area { position: relative; width: min(760px, 94vw); }
 .engine-menu {
-  top: calc(100% + 8px); right: auto; left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
   animation: none;
-  display: flex; gap: 2px; padding: 10px;
+  display: flex; justify-content: center; gap: 2px;
+  margin-top: 12px;
+  padding: 12px;
   min-width: 0;
+  width: fit-content;
+  margin-left: auto; margin-right: auto;
 }
 .engine-menu .eng-pick {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  width: 72px; padding: 8px 4px; border-radius: 10px;
+  width: 76px; padding: 8px 4px; border-radius: 10px;
   text-align: center;
 }
-.engine-menu .eng-pick .eng-glyph { width: 34px; height: 34px; font-size: 14px; }
+.engine-menu .eng-pick .eng-glyph { width: 36px; height: 36px; font-size: 14px; }
 .engine-menu .eng-pick .eng-glyph.plus { background: #f0f2f5; color: #666; }
 .engine-menu .eng-pick .eng-name {
   font-size: 12px; color: #444;
-  max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 68px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .engine-menu .eng-pick:hover { background: #f2f3f5; }
 .engine-menu .eng-pick.on .eng-name { color: #16a34a; font-weight: 700; }
@@ -140,7 +146,9 @@ body {
 /* ---------- 搜索建议 ---------- */
 .sug-drop {
   position: absolute; z-index: 55;
-  top: calc(100% + 6px); left: 0; right: 0;
+  top: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 90vw);
   margin: 0; padding: 6px; list-style: none;
   background: #fff; border-radius: 12px;
   box-shadow: 0 10px 32px rgba(0,0,0,.22);
@@ -210,34 +218,40 @@ body {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(var(--cols, 6), 98px);
-  gap: 30px 8px;
+  grid-template-columns: repeat(var(--cols, 6), var(--card, 98px));
+  column-gap: calc(var(--card, 98px) * 0.10);
+  row-gap: calc(var(--card, 98px) * 0.30);
   justify-content: center;
 }
 .card {
   display: flex; flex-direction: column; align-items: center; gap: 9px;
+  width: var(--card, 98px);
   text-decoration: none; color: #fff; cursor: pointer;
   border-radius: 14px; padding: 4px 2px;
 }
 .card .icon {
   position: relative;
-  width: 64px; height: 64px; border-radius: 50%;
+  width: calc(var(--card, 98px) * 0.66);
+  height: calc(var(--card, 98px) * 0.66);
+  border-radius: 50%;
   background: #fff;
   box-shadow: 0 4px 16px rgba(0,0,0,.20);
   display: grid; place-items: center;
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .card:hover .icon { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.28); }
-.card .icon img { width: 38px; height: 38px; object-fit: contain; border-radius: 9px; }
+.card .icon img { width: 60%; height: 60%; object-fit: contain; border-radius: 12%; }
 .card .icon .ph {
-  width: 38px; height: 38px; border-radius: 50%;
+  width: 60%; height: 60%;
+  border-radius: 50%;
   display: grid; place-items: center;
-  color: #fff; font-size: 17px; font-weight: 600;
+  color: #fff; font-size: calc(var(--card, 98px) * 0.24);
+  font-weight: 600;
   grid-area: 1 / 1;
 }
 .card .icon img { grid-area: 1 / 1; }
 .card .label {
-  max-width: 92px;
+  max-width: calc(var(--card, 98px) * 0.94);
   font-size: 13px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   text-shadow: 0 1px 5px rgba(0,0,0,.45);
