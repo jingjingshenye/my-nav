@@ -119,18 +119,17 @@ body {
 }
 .search-bar input::placeholder { color: #9aa0a6; }
 
-/* ---------- 引擎选择面板（嵌在搜索框与图标之间，不遮挡图标） ---------- */
+/* ---------- 引擎选择弹层（悬浮，锚定在搜索框左侧引擎 Logo 下方） ---------- */
 .search-area { position: relative; width: min(760px, 94vw); }
+.search-bar { position: relative; }
 .engine-menu {
-  position: static;
+  position: absolute;
+  top: calc(100% + 10px); left: 8px;
   transform: none;
   animation: none;
-  display: flex; justify-content: center; gap: 2px;
-  margin-top: 12px;
-  padding: 12px;
-  min-width: 0;
-  width: fit-content;
-  margin-left: auto; margin-right: auto;
+  display: flex; gap: 2px; padding: 12px;
+  min-width: 0; width: max-content;
+  z-index: 70;
 }
 .engine-menu .eng-pick {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
