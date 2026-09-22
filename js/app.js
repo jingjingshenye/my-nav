@@ -177,16 +177,18 @@ function normalizeSettings(s = {}) {
   const out = { ...def, ...s };
   out.engines = (Array.isArray(s.engines) ? s.engines : def.engines)
     .filter(e => e && e.id && e.name && e.urls)
-    .map(e => ({ id: e.id, name: String(e.name), glyph: e.glyph || '', color: e.color || '', urls: migrateUrls(e.urls) }));
-  // 内置引擎始终保留最新目录定义（未启用的不出现在列表中）
-  out.engines = out.engines.filter(e => !ENGINE_CATALOG.some(c => c.id === e.id));
-  for (const id of ['baidu', 'bing']) {
-    const c = ENGINE_CATALOG.find(x => x.id === id);
-    if (!out.engines.some(e => e.id === id)) out.engines.unshift(cloneEngine(c));
-  }
+    .map(e => {
+      const urls = migrateUrls(e.urls);
+      // 存量数据（含旧版键名）迁移时，用内置目录补齐缺失的新类型模板；新版数据完全尊重用户修改
+      const isLegacy = ['web', 'images', 'video', 'music'].some(k => k in (e.urls || {}));
+      const cat = ENGINE_CATALOG.find(c => c.id === e.id);
+      return {
+        id: e.id, name: String(e.name), glyph: e.glyph || '', color: e.color || '',
+        urls: isLegacy && cat ? { ...cat.urls, ...urls } : urls,
+      };
+    });
   if (!out.engines.length) out.engines = def.engines;
   if (!TYPES.some(t => t.id === out.searchType)) out.searchType = def.searchType;
-  if (!out.engines.some(e => e.id === out.engine)) out.engine = 'baidu';
   if (!out.engines.some(e => e.id === out.engine)) out.engine = out.engines[0].id;
   delete out.engineByType; // 旧版字段
   if (!out.layout || typeof out.layout !== 'object') out.layout = { ...def.layout };
@@ -884,7 +886,7 @@ function renderTypeTabs() {
     b.className = t.id === state.data.settings.searchType ? 'active' : '';
     b.onclick = () => {
       state.data.settings.searchType = t.id;
-      persistLocal();
+      persist();
       renderTypeTabs();
       hideSug();
     };
@@ -920,7 +922,7 @@ function renderEngineMenu() {
     b.innerHTML = `<span class="eng-glyph" style="background:${e.color || tint(e.name)}">${escapeHtml(e.glyph || e.name[0])}</span><span class="eng-name">${escapeHtml(e.name)}</span>`;
     b.onclick = () => {
       state.data.settings.engine = e.id;
-      persistLocal();
+      persist();
       toggleEngineMenu(false);
       updateSearchUI();
     };
@@ -1076,6 +1078,7 @@ function renderWpGrid() {
       $('#wpUrl').value = '';
       $$('.wp-thumb').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
+      persist();
       applyWallpaper();
     });
     grid.append(b);
@@ -1416,7 +1419,6 @@ function bindEvents() {
   bindSyncDialog();
   bindImport();
 
-  // 图标加载失败时退回字母头像（事件捕获，处理 img error）
   // 图标源失败时自动切换到下一个源，全部失败才显示字母头像（事件捕获处理 img error）
   $('#grid').addEventListener('error', e => {
     const img = e.target;
