@@ -254,7 +254,7 @@ body {
 .no-icon-shadow .card .icon { box-shadow: none; }
 .card:hover .icon { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.28); }
 .no-icon-shadow .card:hover .icon { box-shadow: 0 8px 22px rgba(0,0,0,.28); }
-.card .icon img { width: 60%; height: 60%; object-fit: contain; border-radius: 12%; }
+.card .icon img { width: 60%; height: 60%; object-fit: contain; border-radius: 12%; position: relative; z-index: 1; background: rgba(255,255,255,.92); }
 .card .icon .ph {
   width: 60%; height: 60%;
   border-radius: 50%;

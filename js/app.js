@@ -484,11 +484,12 @@ function iconSources(site) {
 }
 
 function iconHTML(site) {
+  // 字母头像垫底，真实图标加载成功后盖在上面；全部源失败时移除 img 只留头像
   const ph = `<span class="ph" style="background:${tint(site.name)}">${escapeHtml((site.name || '•')[0])}</span>`;
-  if (site.icon) return `<img src="${escapeHtml(site.icon)}" alt="" loading="lazy" draggable="false">${ph}`;
+  if (site.icon) return `${ph}<img src="${escapeHtml(site.icon)}" alt="" loading="lazy" draggable="false">`;
   const sources = iconSources(site);
   if (!sources.length) return ph;
-  return `<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" alt="" loading="lazy" draggable="false">${ph}`;
+  return `${ph}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" alt="" loading="lazy" draggable="false">`;
 }
 
 function cardEl(site, idx = 0) {
@@ -1469,7 +1470,18 @@ async function init() {
   state.data = await local.load();
   const fresh = !state.data;
   if (fresh) {
-    state.data = { version: 1, sites: seedSites(), settings: seedSettings() };
+    // 全新环境：优先加载项目自带的数据文件（Infinity 迁移数据），否则用种子数据
+    let imported = null;
+    try {
+      const r = await fetch('data/default-data.json');
+      if (r.ok) imported = await r.json();
+    } catch { /* 忽略，用种子 */ }
+    if (imported && Array.isArray(imported.sites)) {
+      state.data = { version: 1, sites: imported.sites, settings: normalizeSettings(imported.settings || {}) };
+      if (!state.data.settings.engines.length) state.data.settings.engines = seedEngines();
+    } else {
+      state.data = { version: 1, sites: seedSites(), settings: seedSettings() };
+    }
     persistLocal();
   } else {
     state.data.settings = normalizeSettings(state.data.settings);
