@@ -123,6 +123,10 @@
         <label class="mt">自定义壁纸 URL
           <input id="wpUrl" placeholder="https://.../wallpaper.jpg">
         </label>
+        <div class="wp-actions">
+          <button type="button" class="btn" id="btnGallery">壁纸库（必应每日 / 随机美图）…</button>
+          <label class="check"><input type="checkbox" id="optBingDaily"> 每天自动更换必应壁纸</label>
+        </div>
       </section>
       <section>
         <h4>图标服务</h4>
@@ -134,6 +138,27 @@
     <div class="dlg-foot">
       <button class="btn" data-close>取消</button>
       <button class="btn primary" id="settingsSave">保存</button>
+    </div>
+  </dialog>
+
+  <!-- 壁纸库 -->
+  <dialog id="dlgGallery">
+    <div class="dlg-head">
+      <h3>壁纸库</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body">
+      <section>
+        <h4>必应每日壁纸 <button type="button" class="mini-btn" id="bingRefresh">刷新</button></h4>
+        <div class="gal-grid" id="bingGrid"><p class="hint">加载中…</p></div>
+      </section>
+      <section>
+        <h4>随机美图 Picsum <button type="button" class="mini-btn" id="picsumRefresh">换一批</button></h4>
+        <div class="gal-grid" id="picsumGrid"><p class="hint">加载中…</p></div>
+      </section>
+    </div>
+    <div class="dlg-foot">
+      <label class="check"><input type="checkbox" id="optDailyApply"> 每天自动更换为最新必应壁纸</label>
     </div>
   </dialog>
 

@@ -127,6 +127,8 @@ function seedSettings() {
     hideIconName: false,
     wallpaper: 'preset:forest',
     customWallpaper: '',
+    bingDaily: false,
+    bingDate: '',
     faviconApi: DEFAULT_FAVICON_API,
     lastSyncAt: null,
     sync: { type: 'local', token: '', gistId: '', filename: DATA_FILE, autoSync: true },
@@ -169,6 +171,8 @@ function normalizeSettings(s = {}) {
   out.layout.col = Math.min(12, Math.max(3, parseInt(out.layout.col, 10) || 6));
   out.searchSuggest = out.searchSuggest !== false;
   out.hideIconName = out.hideIconName === true;
+  out.bingDaily = out.bingDaily === true;
+  if (typeof out.bingDate !== 'string') out.bingDate = '';
   return out;
 }
 
@@ -296,6 +300,129 @@ function applyWallpaper() {
   const s = state.data.settings;
   const wp = WALLPAPERS.find(w => w.id === s.wallpaper) || WALLPAPERS[0];
   $('#wallpaper').style.backgroundImage = s.customWallpaper ? `url("${s.customWallpaper}")` : wp.css;
+}
+
+/* ---------- 壁纸库：必应每日 + Picsum 随机美图 ---------- */
+async function fetchJSON(url, timeout = 6000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+// 多源回退：依次尝试，直到拿到壁纸列表（url/thumb/title 统一格式）
+async function fetchBingFeed() {
+  const sources = [
+    async () => {
+      const d = await fetchJSON('https://peapix.com/api/feed?country=cn');
+      return (Array.isArray(d) ? d : []).map(x => ({
+        url: x.url || x.image, thumb: x.thumbnail || x.url || x.image,
+        title: x.copyright || x.title || '',
+      }));
+    },
+    async () => {
+      const d = await fetchJSON('https://peapix.com/api/feed?country=us');
+      return (Array.isArray(d) ? d : []).map(x => ({
+        url: x.url || x.image, thumb: x.thumbnail || x.url || x.image,
+        title: x.copyright || x.title || '',
+      }));
+    },
+    async () => {
+      const d = await fetchJSON('https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8');
+      return (d.images || []).map(x => ({
+        url: 'https://www.bing.com' + x.url,
+        thumb: 'https://www.bing.com' + x.url,
+        title: x.copyright || x.title || '',
+      }));
+    },
+    async () => [{ url: 'https://api.dujin.org/bing/1920.php', thumb: 'https://api.dujin.org/bing/1920.php', title: '必应每日壁纸（直连）' }],
+  ];
+  for (const f of sources) {
+    try {
+      const list = (await f()).filter(x => x.url);
+      if (list.length) return list;
+    } catch { /* 尝试下一个源 */ }
+  }
+  return null;
+}
+
+async function fetchPicsum() {
+  const page = 1 + Math.floor(Math.random() * 40);
+  const d = await fetchJSON(`https://picsum.photos/v2/list?page=${page}&limit=8`);
+  return (Array.isArray(d) ? d : []).map(x => ({
+    url: `https://picsum.photos/id/${x.id}/1920/1080`,
+    thumb: `https://picsum.photos/id/${x.id}/400/240`,
+    title: x.author || ('Pic #' + x.id),
+  }));
+}
+
+function galItemEl(item) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'gal-item';
+  b.innerHTML = `<span class="gal-thumb" style="background-image:url('${escapeHtml(item.thumb)}')"></span><span class="gal-cap" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</span>`;
+  b.addEventListener('click', () => applyWallpaperUrl(item.url, item.title));
+  return b;
+}
+
+function applyWallpaperUrl(url, title) {
+  const s = state.data.settings;
+  s.customWallpaper = url;
+  s.wallpaper = ''; // 自定义 URL 优先于内置预设
+  persist();
+  applyWallpaper();
+  $('#dlgGallery').close();
+  $('#wpUrl').value = url;
+  toast(`已应用「${title || '自定义壁纸'}」，配置将自动同步`);
+}
+
+function openGallery() {
+  $('#optDailyApply').checked = !!state.data.settings.bingDaily;
+  $('#dlgGallery').showModal();
+  loadBingGallery();
+  loadPicsumGallery();
+}
+
+async function loadBingGallery() {
+  const box = $('#bingGrid');
+  box.innerHTML = '<p class="hint">加载中…</p>';
+  const list = await fetchBingFeed();
+  box.innerHTML = '';
+  if (!list) { box.innerHTML = '<p class="hint">壁纸源加载失败，请检查网络后点击「刷新」重试</p>'; return; }
+  list.slice(0, 8).forEach(item => box.append(galItemEl(item)));
+}
+
+async function loadPicsumGallery() {
+  const box = $('#picsumGrid');
+  box.innerHTML = '<p class="hint">加载中…</p>';
+  try {
+    const list = await fetchPicsum();
+    box.innerHTML = '';
+    if (!list.length) throw new Error('empty');
+    list.forEach(item => box.append(galItemEl(item)));
+  } catch {
+    box.innerHTML = '<p class="hint">图片源加载失败，请检查网络后点「换一批」重试</p>';
+  }
+}
+
+/** 每日自动更换：当天首次打开页面时拉取最新必应壁纸并应用 */
+async function maybeAutoBingDaily() {
+  const s = state.data.settings;
+  if (!s.bingDaily) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (s.bingDate === today) return;
+  s.bingDate = today;
+  persistLocal();
+  const list = await fetchBingFeed();
+  if (!list) { s.bingDate = ''; persistLocal(); return; } // 失败明天再试
+  s.customWallpaper = list[0].url;
+  s.wallpaper = '';
+  persist();
+  applyWallpaper();
+  toast('已自动更换今日必应壁纸');
 }
 
 function iconHTML(site) {
@@ -529,6 +656,7 @@ function openSettings() {
   $('#faviconApi').value = state.data.settings.faviconApi || DEFAULT_FAVICON_API;
   $('#optSuggest').checked = !!state.data.settings.searchSuggest;
   $('#optHideName').checked = !!state.data.settings.hideIconName;
+  $('#optBingDaily').checked = !!state.data.settings.bingDaily;
   $('#layoutMode').value = state.data.settings.layout.mode;
   $('#layoutRow').value = String(state.data.settings.layout.row);
   $('#layoutCol').value = String(state.data.settings.layout.col);
@@ -757,12 +885,25 @@ function renderWpGrid() {
 
 function bindSettingsDialog() {
   $('#btnAddEngine').addEventListener('click', () => openEngineDialog(null));
+  $('#btnGallery').addEventListener('click', openGallery);
+  $('#bingRefresh').addEventListener('click', loadBingGallery);
+  $('#picsumRefresh').addEventListener('click', loadPicsumGallery);
+  $('#optDailyApply').addEventListener('change', e => {
+    state.data.settings.bingDaily = e.target.checked;
+    persist();
+    toast(e.target.checked ? '已开启每日自动更换必应壁纸' : '已关闭每日自动更换');
+  });
+  $('#optBingDaily')?.addEventListener('change', e => {
+    state.data.settings.bingDaily = e.target.checked;
+    $('#optDailyApply').checked = e.target.checked;
+  });
   $('#settingsSave').addEventListener('click', () => {
     const s = state.data.settings;
     s.customWallpaper = $('#wpUrl').value.trim();
     s.faviconApi = $('#faviconApi').value.trim() || DEFAULT_FAVICON_API;
     s.searchSuggest = $('#optSuggest').checked;
     s.hideIconName = $('#optHideName').checked;
+    s.bingDaily = $('#optBingDaily').checked;
     s.layout.mode = $('#layoutMode').value === 'custom' ? 'custom' : 'auto';
     s.layout.row = parseInt($('#layoutRow').value, 10) || 3;
     s.layout.col = parseInt($('#layoutCol').value, 10) || 6;
@@ -1076,6 +1217,7 @@ async function init() {
   }
   bindEvents();
   renderAll();
+  maybeAutoBingDaily().catch(() => {});
 }
 
 init().catch(err => toast('初始化失败：' + err.message, 'error'));
