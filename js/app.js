@@ -843,12 +843,6 @@ function bindTopMenu() {
     const b = e.target.closest('button[data-act]');
     if (b) onMenuAction(b.dataset.act);
   });
-  $('#btnHome').addEventListener('click', () => {
-    toggleMenu(false);
-    state.page = 0;
-    renderGrid();
-    $('#searchInput').focus();
-  });
   $('#logo').addEventListener('click', () => $('#dlgAbout').showModal());
 
   document.addEventListener('click', e => {
