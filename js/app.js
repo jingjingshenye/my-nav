@@ -115,7 +115,6 @@ const WALLPAPERS = [
 ];
 
 /* ================= 默认数据 ================= */
-const DEFAULT_FAVICON_API = 'https://api.iowen.cn/favicon/{host}.png';
 
 function seedSettings() {
   return {
@@ -155,7 +154,6 @@ function seedSettings() {
     customWallpaper: '',
     bingDaily: false,
     bingDate: '',
-    faviconApi: DEFAULT_FAVICON_API,
     lastSyncAt: null,
     sync: { type: 'local', token: '', gistId: '', filename: DATA_FILE, autoSync: true },
   };
@@ -219,6 +217,7 @@ function normalizeSettings(s = {}) {
   out.hideIconName = out.hideIconName === true;
   out.bingDaily = out.bingDaily === true;
   if (typeof out.bingDate !== 'string') out.bingDate = '';
+  delete out.faviconApi; // 已废弃：图标改为多源自动回退
   return out;
 }
 
@@ -471,14 +470,25 @@ async function maybeAutoBingDaily() {
   toast('已自动更换今日必应壁纸');
 }
 
+/** 图标多源回退：依次尝试，直到拿到可用图标；全部失败则显示字母头像 */
+function iconSources(site) {
+  let host;
+  try { host = new URL(site.url).host; } catch { return []; }
+  return [
+    `https://${host}/favicon.ico`,
+    `https://icons.duckduckgo.com/ip3/${host}.ico`,
+    `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
+    `https://favicon.im/${host}?larger=true`,
+    `https://api.iowen.cn/favicon/${host}.png`,
+  ];
+}
+
 function iconHTML(site) {
   const ph = `<span class="ph" style="background:${tint(site.name)}">${escapeHtml((site.name || '•')[0])}</span>`;
-  let src = site.icon;
-  if (!src) {
-    try { src = state.data.settings.faviconApi.replace('{host}', new URL(site.url).host); }
-    catch { return ph; }
-  }
-  return `<img src="${escapeHtml(src)}" alt="" loading="lazy" draggable="false">${ph}`;
+  if (site.icon) return `<img src="${escapeHtml(site.icon)}" alt="" loading="lazy" draggable="false">${ph}`;
+  const sources = iconSources(site);
+  if (!sources.length) return ph;
+  return `<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" alt="" loading="lazy" draggable="false">${ph}`;
 }
 
 function cardEl(site, idx = 0) {
@@ -757,7 +767,6 @@ function openSettings() {
   renderWpGrid();
   renderEngineList();
   $('#wpUrl').value = s.customWallpaper || '';
-  $('#faviconApi').value = s.faviconApi || DEFAULT_FAVICON_API;
   $('#optBingDaily').checked = !!s.bingDaily;
   $('#dlgSettings').showModal();
 }
@@ -1134,11 +1143,6 @@ function bindSettingsDialog() {
     applyWallpaper();
     renderWpGrid();
   });
-  $('#faviconApi').addEventListener('change', e => {
-    state.data.settings.faviconApi = e.target.value.trim() || DEFAULT_FAVICON_API;
-    persist();
-    renderGrid();
-  });
 
   // 还原设置
   $('#btnResetSettings').addEventListener('click', () => {
@@ -1398,8 +1402,14 @@ function bindEvents() {
   bindImport();
 
   // 图标加载失败时退回字母头像（事件捕获，处理 img error）
+  // 图标源失败时自动切换到下一个源，全部失败才显示字母头像（事件捕获处理 img error）
   $('#grid').addEventListener('error', e => {
-    if (e.target.tagName === 'IMG') e.target.remove();
+    const img = e.target;
+    if (img.tagName !== 'IMG') return;
+    const list = (img.dataset.sources || '').split('|').filter(Boolean);
+    const i = list.indexOf(img.getAttribute('src') || '');
+    if (i >= 0 && i + 1 < list.length) img.src = list[i + 1];
+    else img.remove();
   }, true);
 
   // dialog：点击遮罩或 × 关闭
