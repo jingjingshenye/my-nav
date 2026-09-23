@@ -1824,13 +1824,17 @@ function bindEvents() {
   });
   $('#iconFind').addEventListener('click', e => { if (e.target === e.currentTarget) closeIconFind(); });
 
-  // 滚轮翻页
+  // 滚轮翻页：整页任意位置生效（翻页后网格高度会变化，仅监听网格会导致"滚不回来"）；
+  // 兼容 Firefox 的行滚动模式（deltaMode=1 时 deltaY 按行计）
   let wheelAt = 0;
-  $('#gridArea').addEventListener('wheel', e => {
+  document.addEventListener('wheel', e => {
     const now = Date.now();
     if (now - wheelAt < 450 || Math.abs(e.deltaY) < 20) return;
-    if (e.deltaY > 0) { if (state.page < state.pages - 1) { flipPage(1); wheelAt = now; } }
-    else if (state.page > 0) { flipPage(-1); wheelAt = now; }
+    const t = e.target instanceof Element ? e.target : null;
+    if (t && t.closest('#sidePanel, dialog, .edit-panel, .engine-menu, .sug-drop, .iconfind-mask, input, textarea, select')) return;
+    const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+    if (dy > 0) { if (state.page < state.pages - 1) { flipPage(1); wheelAt = now; } }
+    else if (dy < 0 && state.page > 0) { flipPage(-1); wheelAt = now; }
   }, { passive: true });
 
   // 翻页箭头
