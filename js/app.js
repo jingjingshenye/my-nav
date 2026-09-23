@@ -234,6 +234,9 @@ function normalizeSettings(s = {}) {
   out.weatherCity = typeof out.weatherCity === 'string' && out.weatherCity.trim() ? out.weatherCity.trim() : '北京';
   out.wallOpacity = pct(out.wallOpacity, 40, 0, 100);
   out.wallBlur = pct(out.wallBlur, 0, 0, 20);
+  out.wallFavorites = Array.isArray(out.wallFavorites)
+    ? out.wallFavorites.filter(f => f && typeof f.url === 'string').slice(0, 12)
+    : [];
   out.animEasing = ['default', 'spring', 'fade'].includes(out.animEasing) ? out.animEasing : 'default';
   // 旧字段 searchBtn(显示) 迁移为 searchHideBtn(隐藏)
   if (s.searchHideBtn === undefined && s.searchBtn !== undefined) out.searchHideBtn = s.searchBtn === false;
@@ -806,7 +809,7 @@ function openSiteDialog(site) {
   if (site && site.icon && site.icon.startsWith('idb:')) Object.assign(editIcon, { mode: 'idb', url: '', idbKey: site.icon.slice(4) });
   else if (site && site.icon) Object.assign(editIcon, { mode: 'url', url: site.icon, idbKey: '' });
   else Object.assign(editIcon, { mode: 'auto', url: '', idbKey: '' });
-  renderIconPick(site);
+  renderIconPick();
   $('#editMask').hidden = false;
   $('#editPanel').hidden = false;
   $('#editUrl').focus();
@@ -1807,16 +1810,16 @@ function bindEvents() {
     if (e.key === 'Escape') { toggleEngineMenu(false); hideSug(); closePanel(); closeSiteDialog(); closeIconFind(); $('#wallMenu').hidden = true; }
     const tag = document.activeElement.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-    if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
+    if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k' && !typing)) {
       e.preventDefault();
       $('#searchInput').focus();
       $('#searchInput').select();
     }
-    if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+    if (e.ctrlKey && e.key.toLowerCase() === 'f' && !typing) {
       e.preventDefault();
       openIconFind();
     }
-    if (!typing) {
+    if (!typing && $('#iconFind').hidden) {
       if (e.key === 'ArrowRight') flipPage(1);
       if (e.key === 'ArrowLeft') flipPage(-1);
     }
@@ -1864,6 +1867,11 @@ function widgetEl(w) {
   const a = document.createElement('a');
   a.className = 'card widget';
   a.dataset.widget = w.id;
+  // 与站点图标一致：右键小组件进入编辑状态
+  a.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (!state.editMode) setEditMode(true);
+  });
   let inner = '';
   if (w.id === 'todo') {
     const n = state.data.settings.showTodoBadge ? todoUndone() : 0;

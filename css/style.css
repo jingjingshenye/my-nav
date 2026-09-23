@@ -444,7 +444,7 @@ label.mt { margin-top: 12px; }
   margin-left: 8px;
 }
 .mini-btn:hover { background: #f5f6f7; }
-.sync-status { font-size: 12.5px; color: #67c23a; margin: 6px 0 0; min-height: 18px; }
+.sync-status { font-size: 12.5px; color: var(--tx-2, #98a0a8); margin: 6px 0 0; min-height: 18px; }
 .about { text-align: center; padding-bottom: 18px; }
 .about p { margin: 8px 0; font-size: 13.5px; color: #444; }
 .about a { color: #4f8dff; text-decoration: none; }
@@ -475,8 +475,7 @@ label.mt { margin-top: 12px; }
 }
 
 /* ========== 设置面板（对齐 inftab） ========== */
-.settings-dlg { width: min(640px, 94vw); }
-.settings-body { background: #eef0f2; border-radius: 0; padding: 14px; }.set-row {
+.set-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 9px 0; font-size: 13.5px; color: #333;
 }
@@ -582,8 +581,7 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .dlg-body label.plain, .dlg-form label, .dlg-body label.mt { color: #555; }
 .dlg-body h4 { color: var(--tx-2); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
 
-.dlg-body input, .dlg-body select, .dlg-form input,
-.dlg-body .set-pane input:not([type="checkbox"]):not([type="range"]) {
+.dlg-body input, .dlg-body select, .dlg-form input {
   background: #fff;
   border: 1px solid var(--line-2);
   color: var(--tx);
@@ -600,7 +598,6 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .hint { color: var(--tx-2); }
 .hint a { color: #4f8dff; }
 .form-error { color: var(--bad); }
-.sync-status { color: var(--ok); }
 
 .btn {
   background: #fff;
@@ -644,42 +641,6 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .sug-drop li { color: #333; }
 .sug-drop li:hover, .sug-drop li.active { background: #f2f5ff; color: #2456c4; }
 
-/* ---------- 设置面板：左导航 + 内容面板 ---------- */
-.settings-dlg { width: min(860px, 96vw); }
-.settings-dlg .dlg-body.settings-body { padding: 0; background: #f0f1f3; }
-.set-wrap { display: flex; min-height: 470px; max-height: 60vh; }
-.set-nav {
-  width: 158px; flex: none;
-  border-right: 1px solid var(--line);
-  padding: 16px 10px;
-  display: flex; flex-direction: column; gap: 3px;
-  overflow: auto;
-  background: #fff;
-}
-.set-nav button {
-  text-align: left; padding: 9px 14px;
-  border: none; border-radius: var(--r-sm);
-  background: none; cursor: pointer;
-  font-size: 13.5px; color: #555;
-  transition: background .15s, color .15s;
-}
-.set-nav button:hover { color: var(--tx); background: var(--glass-2); }
-.set-nav button.active {
-  color: var(--tx);
-  background: var(--acc-soft);
-  box-shadow: inset 2.5px 0 0 var(--acc);
-  font-weight: 600;
-}
-.set-panes { flex: 1; min-width: 0; overflow: auto; padding: 24px 26px; background: #fff; }
-.set-pane { display: none; }
-.set-pane.active { display: block; animation: pane-in .18s ease; }
-@keyframes pane-in { from { opacity: 0; transform: translateY(4px); } }
-.set-pane h4 {
-  margin: 0 0 6px; font-size: 15px; color: var(--tx);
-  letter-spacing: 0; text-transform: none;
-  padding-bottom: 8px; border-bottom: 1px solid var(--line);
-}
-.set-pane h4 + .set-row { margin-top: 4px; }
 .pane-tip { font-size: 12.5px; color: var(--tx-2); margin: 2px 0 14px; }
 
 .set-row {
@@ -857,7 +818,6 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .dir-empty { grid-column: 1 / -1; text-align: center; color: var(--tx-2); font-size: 13px; padding: 30px 0; }
 
 /* 历史备份节点 */
-.dlg-hr { border: none; border-top: 1px solid var(--line); margin: 14px 0 10px; }
 .dlg-sub { color: var(--tx); font-size: 13.5px; margin: 0 0 8px; }
 .backup-bar { margin-bottom: 10px; }
 .backup-list { list-style: none; margin: 0; padding: 0; max-height: 180px; overflow: auto; }
@@ -928,19 +888,6 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
   object-fit: contain; border-radius: 50%;
   background: rgba(255, 255, 255, .92);
 }
-
-/* 抽屉快捷操作区 */
-.drawer-actions {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  padding: 2px 2px 12px;
-}
-.drawer-actions .act {
-  border: 1px solid var(--line-2); background: #fff;
-  border-radius: 8px; padding: 6px 12px;
-  font-size: 12.5px; color: var(--tx); cursor: pointer;
-}
-.drawer-actions .act:hover { background: var(--glass-2); }
-.drawer-actions .act.on { background: var(--acc); border-color: var(--acc); color: #fff; }
 
 /* ---------- 三 tab 侧边面板（添加 / 我的 / 设置） ---------- */
 .side-panel {
