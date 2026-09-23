@@ -149,6 +149,17 @@ function seedSettings() {
     fontShadow: true,
     fontSize: 13,
     fontColor: '#ffffff',
+    // 入场动画效果
+    animEasing: 'default',
+    // 搜索按钮
+    searchBtn: false,
+    // 壁纸遮罩 / 模糊
+    wallOpacity: 40,
+    wallBlur: 0,
+    // 小组件
+    todo: { items: [] },
+    note: '',
+    weatherCity: '北京',
     // 壁纸
     wallpaper: 'preset:forest',
     customWallpaper: '',
@@ -220,6 +231,16 @@ function normalizeSettings(s = {}) {
   out.bingDaily = out.bingDaily === true;
   if (typeof out.bingDate !== 'string') out.bingDate = '';
   delete out.faviconApi; // 已废弃：图标改为多源自动回退
+  out.todo = (out.todo && Array.isArray(out.todo.items))
+    ? { items: out.todo.items.filter(t => t && typeof t.text === 'string' && t.text.trim())
+        .map(t => ({ id: t.id || uid(), text: String(t.text).slice(0, 120), done: !!t.done })) }
+    : { items: [] };
+  out.note = typeof out.note === 'string' ? out.note.slice(0, 20000) : '';
+  out.weatherCity = typeof out.weatherCity === 'string' && out.weatherCity.trim() ? out.weatherCity.trim() : '北京';
+  out.wallOpacity = pct(out.wallOpacity, 40, 0, 100);
+  out.wallBlur = pct(out.wallBlur, 0, 0, 20);
+  out.animEasing = ['default', 'spring', 'fade'].includes(out.animEasing) ? out.animEasing : 'default';
+  out.searchBtn = out.searchBtn === true;
   return out;
 }
 
@@ -327,6 +348,7 @@ async function pullCloud(notify = true) {
   const adapter = createAdapter(cfg);
   const payload = await adapter.load();
   if (!payload || !Array.isArray(payload.sites)) throw new Error('云端数据格式不正确');
+  saveBackupNode(); // 拉取覆盖前自动留一份本地快照
   const keepSync = state.data.settings.sync; // 本机的同步凭据不被云端覆盖
   state.data = {
     version: 1,
@@ -558,21 +580,25 @@ function renderGrid() {
   const grid = $('#grid'), dots = $('#dots');
   computeLayout();
   const pp = perPage();
-  const total = state.data.sites.length + (state.editMode ? 1 : 0);
+  const total = state.data.sites.length + WIDGETS.length + (state.editMode ? 1 : 0);
   state.pages = Math.max(1, Math.ceil(total / pp));
   state.page = Math.min(state.page, state.pages - 1);
 
-  const slice = state.data.sites.slice(state.page * pp, state.page * pp + pp);
+  // 第 0 页前 3 格固定为小组件（待办/笔记/天气），其余页放站点
+  const start = state.page * pp - (state.page > 0 ? WIDGETS.length : 0);
+  const count = pp - (state.page === 0 ? WIDGETS.length : 0);
+  const slice = state.data.sites.slice(start, start + count);
   grid.style.setProperty('--cols', state.layout.cols);
   grid.style.setProperty('--card', state.layout.card + 'px');
   grid.classList.toggle('editing', state.editMode);
   grid.classList.toggle('hide-labels', !!state.data.settings.hideIconName);
   grid.innerHTML = '';
-  if (!slice.length && !state.editMode) {
+  if (!slice.length && state.page === 0 && !state.editMode) {
     grid.innerHTML = '<p class="empty-tip">这里空空如也，点击右上角菜单 → 「添加网址」开始使用</p>';
   } else {
-    slice.forEach((s, i) => grid.append(cardEl(s, i)));
-    if (state.editMode) grid.append(addCardEl());
+    if (state.page === 0) WIDGETS.forEach(w => grid.append(widgetEl(w)));
+    slice.forEach((s, i) => grid.append(cardEl(s, i + WIDGETS.length)));
+    if (state.editMode && state.page === 0) grid.append(addCardEl());
   }
 
   dots.innerHTML = '';
@@ -724,8 +750,15 @@ function applyAppearance() {
   root.setProperty('--icon-radius', s.iconRadius + '%');
   root.setProperty('--icon-opacity', (s.iconOpacity / 100).toFixed(2));
   $('.stage').style.zoom = s.pageScale / 100;
+  // 遮罩强度：滑杆 0 时也保留 35% 基础遮罩，保证亮色壁纸上文字可读
+  $('.wallpaper-mask').style.opacity = (0.35 + 0.65 * s.wallOpacity / 100).toFixed(2);
+  const wp = $('#wallpaper');
+  wp.style.filter = s.wallBlur > 0 ? 'blur(' + s.wallBlur + 'px)' : '';
+  wp.style.transform = s.wallBlur > 0 ? 'scale(' + (1 + s.wallBlur / 150).toFixed(3) + ')' : '';
 
   const grid = $('#grid');
+  grid.dataset.easing = s.animEasing;
+  $('#searchBtn').hidden = !s.searchBtn;
   grid.classList.toggle('hide-labels', !!s.hideIconName);
   grid.classList.toggle('no-icon-shadow', !s.iconShadow);
   grid.classList.toggle('icon-intro', !!s.iconIntro);
@@ -766,6 +799,12 @@ function openSettings() {
   $('#tgFontShadow').checked = s.fontShadow;
   $('#rgFontSize').value = s.fontSize;
   $('#rgFontSizeVal').textContent = String(s.fontSize);
+  $('#selEasing').value = s.animEasing;
+  $('#tgSearchBtn').checked = s.searchBtn;
+  $('#rgWallOpacity').value = s.wallOpacity;
+  $('#rgWallOpacityVal').textContent = s.wallOpacity + '%';
+  $('#rgWallBlur').value = s.wallBlur;
+  $('#rgWallBlurVal').textContent = String(s.wallBlur);
   renderSwatches();
   renderWpGrid();
   renderEngineList();
@@ -852,6 +891,7 @@ function onMenuAction(act) {
   toggleMenu(false);
   switch (act) {
     case 'add': openSiteDialog(null); break;
+    case 'directory': openDirectory(); break;
     case 'edit':
       state.editMode = !state.editMode;
       $('#menuEdit').classList.toggle('on', state.editMode);
@@ -1153,6 +1193,29 @@ function bindSettingsDialog() {
   bindRange('rgSearchOpacity', 'rgSearchOpacityVal', 'searchOpacity', applyAppearance);
   bind('tgFontShadow', 'fontShadow', renderGrid);
   bindRange('rgFontSize', 'rgFontSizeVal', 'fontSize', renderGrid, '');
+  $('#selEasing').addEventListener('change', e => {
+    state.data.settings.animEasing = e.target.value;
+    persist();
+    renderGrid();
+  });
+  bind('tgSearchBtn', 'searchBtn', applyAppearance);
+  bindRange('rgWallOpacity', 'rgWallOpacityVal', 'wallOpacity', applyAppearance);
+  bindRange('rgWallBlur', 'rgWallBlurVal', 'wallBlur', applyAppearance);
+  $('#wallFile').addEventListener('change', e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    if (f.size > 4 * 1024 * 1024) { toast('图片过大（超过 4MB），请压缩后再试', 'error'); return; }
+    idbPut('wallpaper', f).then(() => {
+      const s = state.data.settings;
+      s.wallpaper = 'upload';
+      s.customWallpaper = '';
+      persist();
+      applyWallpaper();
+      applyWallpaperUpload();
+      toast('已应用本地图片壁纸');
+    }).catch(() => toast('保存失败，请重试', 'error'));
+  });
 
   // 壁纸与高级（失焦/回车保存）
   $('#wpUrl').addEventListener('change', e => {
@@ -1165,8 +1228,10 @@ function bindSettingsDialog() {
   // 还原设置
   $('#btnResetSettings').addEventListener('click', () => {
     if (!confirm('恢复默认设置？网址与云同步配置会保留。')) return;
-    const keepSync = state.data.settings.sync;
-    state.data.settings = { ...seedSettings(), sync: keepSync };
+    saveBackupNode();
+    const cur = state.data.settings;
+    const keepSync = cur.sync;
+    state.data.settings = { ...seedSettings(), sync: keepSync, todo: cur.todo, note: cur.note, weatherCity: cur.weatherCity };
     state.page = 0;
     persist();
     renderAll();
@@ -1287,6 +1352,7 @@ function fillSyncDialog() {
   $('#syncFile').value = s.filename || DATA_FILE;
   $('#syncAuto').checked = !!s.autoSync;
   $('#giteeFields').hidden = s.type !== 'gitee-gist';
+  renderBackups();
   updateSyncStatus();
 }
 
@@ -1313,7 +1379,53 @@ function updateSyncStatus() {
   el.textContent = `云端 Gist：${s.sync.gistId || '尚未创建'}　上次同步：${s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString() : '从未'}`;
 }
 
+function renderBackups() {
+  const list = $('#backupList');
+  const arr = getBackups();
+  list.innerHTML = '';
+  if (!arr.length) { list.innerHTML = '<li><span class="bt">暂无备份节点</span></li>'; return; }
+  arr.forEach((b, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="bt">' + new Date(b.t).toLocaleString() + '</span>' +
+      '<button type="button" class="btn">恢复</button><button type="button" class="btn">删除</button>';
+    const [btnRestore, btnDel] = li.querySelectorAll('button');
+    btnRestore.addEventListener('click', () => restoreBackup(i));
+    btnDel.addEventListener('click', () => {
+      const arr2 = getBackups(); arr2.splice(i, 1);
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(arr2));
+      renderBackups();
+    });
+    list.append(li);
+  });
+}
+
+function restoreBackup(i) {
+  const arr = getBackups();
+  const b = arr[i];
+  if (!b) return;
+  if (!confirm('恢复到 ' + new Date(b.t).toLocaleString() + ' 的备份？当前数据会被覆盖。')) return;
+  saveBackupNode();
+  const keepSync = state.data.settings.sync;
+  state.data = {
+    version: 1,
+    sites: (b.payload.sites || []).map(s => ({
+      id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
+      icon: s.icon || '', badge: !!s.badge,
+    })),
+    settings: { ...normalizeSettings(b.payload.settings || {}), sync: keepSync },
+  };
+  state.page = 0;
+  persist();
+  renderAll();
+  toast('已恢复到 ' + new Date(b.t).toLocaleString());
+}
+
 function bindSyncDialog() {
+  $('#btnBackupNow').addEventListener('click', () => {
+    saveBackupNode();
+    renderBackups();
+    toast('已创建备份节点');
+  });
   $('#syncType').addEventListener('change', () => {
     $('#giteeFields').hidden = $('#syncType').value !== 'gitee-gist';
   });
@@ -1418,15 +1530,20 @@ function bindEvents() {
   bindEngineDialog();
   bindSyncDialog();
   bindImport();
+  bindTodo();
+  bindNote();
+  bindWeather();
+  bindDirectory();
+
+  // 壁纸为本地图片时从 IndexedDB 恢复显示
+  applyWallpaperUpload();
 
   // 图标源失败时自动切换到下一个源，全部失败才显示字母头像（事件捕获处理 img error）
   $('#grid').addEventListener('error', e => {
-    const img = e.target;
-    if (img.tagName !== 'IMG') return;
-    const list = (img.dataset.sources || '').split('|').filter(Boolean);
-    const i = list.indexOf(img.getAttribute('src') || '');
-    if (i >= 0 && i + 1 < list.length) img.src = list[i + 1];
-    else img.remove();
+    if (e.target.tagName === 'IMG') advanceIcon(e.target);
+  }, true);
+  $('#dirList').addEventListener('error', e => {
+    if (e.target.tagName === 'IMG') advanceIcon(e.target);
   }, true);
 
   // dialog：点击遮罩或 × 关闭
@@ -1465,6 +1582,325 @@ function bindEvents() {
   $('#gridNext').addEventListener('click', () => flipPage(1));
 
   addEventListener('resize', debounce(renderGrid, 200));
+}
+
+/* ================= 小组件：待办 / 笔记 / 天气 ================= */
+const WIDGETS = [
+  { id: 'todo', name: '待办事项' },
+  { id: 'note', name: '笔记' },
+  { id: 'weather', name: '天气' },
+];
+
+const SVG_TODO = '<svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
+const SVG_NOTE = '<svg viewBox="0 0 24 24" fill="none" stroke="#e6a157" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
+const SVG_CLOUD = '<svg viewBox="0 0 24 24" fill="#5aa2ff" stroke="none"><path d="M18.4 10.6a6 6 0 00-11.3-2A5 5 0 006 18.5h12a4 4 0 00.4-7.9z"/></svg>';
+
+const todoUndone = () => state.data.settings.todo.items.filter(t => !t.done).length;
+
+function widgetEl(w) {
+  const a = document.createElement('a');
+  a.className = 'card widget';
+  a.dataset.widget = w.id;
+  let inner = '';
+  if (w.id === 'todo') {
+    const n = todoUndone();
+    inner = `<span class="icon">${SVG_TODO}${n ? '<i class="count-badge">' + (n > 99 ? '99+' : n) + '</i>' : ''}</span><span class="label">待办事项</span>`;
+    a.addEventListener('click', e => { e.preventDefault(); openTodo(); });
+  } else if (w.id === 'note') {
+    inner = `<span class="icon">${SVG_NOTE}</span><span class="label">笔记</span>`;
+    a.addEventListener('click', e => { e.preventDefault(); openNote(); });
+  } else {
+    const t = state.data.settings.weatherCache;
+    inner = `<span class="icon">${SVG_CLOUD}</span><span class="label">${t && t.t !== '' ? t.t + '°C' : '天气'}</span>`;
+    a.addEventListener('click', e => { e.preventDefault(); openWeather(); });
+  }
+  a.innerHTML = inner;
+  return a;
+}
+
+/* ---------- 待办事项 ---------- */
+function openTodo() { renderTodoList(); $('#dlgTodo').showModal(); }
+
+function renderTodoList() {
+  const items = state.data.settings.todo.items;
+  const list = $('#todoList');
+  list.innerHTML = '';
+  $('#todoEmpty').hidden = items.length > 0;
+  items.forEach((t, i) => {
+    const li = document.createElement('li');
+    li.className = t.done ? 'done' : '';
+    li.innerHTML = `<input type="checkbox" ${t.done ? 'checked' : ''}><span class="t">${escapeHtml(t.text)}</span><button type="button" class="del" title="删除">${SVG_X}</button>`;
+    li.querySelector('input').addEventListener('change', e => {
+      t.done = e.target.checked;
+      persist();
+      renderTodoList();
+      renderGrid();
+    });
+    li.querySelector('.del').addEventListener('click', () => {
+      items.splice(i, 1);
+      persist();
+      renderTodoList();
+      renderGrid();
+    });
+    list.append(li);
+  });
+}
+
+function bindTodo() {
+  $('#todoForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = $('#todoInput').value.trim();
+    if (!text) return;
+    state.data.settings.todo.items.push({ id: uid(), text, done: false });
+    $('#todoInput').value = '';
+    persist();
+    renderTodoList();
+    renderGrid();
+  });
+  $('#todoClear').addEventListener('click', () => {
+    const s = state.data.settings.todo;
+    s.items = s.items.filter(t => !t.done);
+    persist();
+    renderTodoList();
+    renderGrid();
+  });
+}
+
+/* ---------- 笔记 ---------- */
+function openNote() {
+  $('#noteText').value = state.data.settings.note || '';
+  $('#noteSaved').textContent = '';
+  $('#dlgNote').showModal();
+}
+
+function bindNote() {
+  const ta = $('#noteText');
+  const save = debounce(() => {
+    state.data.settings.note = ta.value;
+    persistLocal();
+    $('#noteSaved').textContent = '已自动保存 ' + new Date().toLocaleTimeString();
+  }, 500);
+  ta.addEventListener('input', save);
+}
+
+/* ---------- 天气（Open-Meteo 免密钥） ---------- */
+const WMO = { 0: '晴', 1: '基本晴', 2: '多云', 3: '阴', 45: '雾', 48: '雾凇', 51: '毛毛雨', 53: '毛毛雨', 55: '毛毛雨', 61: '小雨', 63: '中雨', 65: '大雨', 66: '冻雨', 67: '冻雨', 71: '小雪', 73: '中雪', 75: '大雪', 77: '雪粒', 80: '阵雨', 81: '阵雨', 82: '强阵雨', 85: '阵雪', 86: '阵雪', 95: '雷阵雨', 96: '雷阵雨伴冰雹', 99: '雷阵雨伴冰雹' };
+const DAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+async function loadWeather(city) {
+  const enc = encodeURIComponent(city);
+  const geo = await fetchJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${enc}&count=1&language=zh&format=json`);
+  const g = geo && geo.results && geo.results[0];
+  if (!g) throw new Error('未找到城市「' + city + '」');
+  const w = await fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${g.latitude}&longitude=${g.longitude}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`);
+  const cur = w.current || {};
+  const info = {
+    city, t: Math.round(cur.temperature_2m), desc: WMO[cur.weather_code] || '—',
+    days: (w.daily && w.daily.time ? w.daily.time : []).map((d, i) => ({
+      d: DAY_NAMES[new Date(d).getDay()],
+      w: WMO[w.daily.weather_code[i]] || '—',
+      t: Math.round(w.daily.temperature_2m_min[i]) + '~' + Math.round(w.daily.temperature_2m_max[i]) + '°',
+    })),
+    at: Date.now(),
+  };
+  state.data.settings.weatherCache = info;
+  persistLocal();
+  updateWeatherLabel();
+  renderWeatherDlg(info);
+}
+
+function updateWeatherLabel() {
+  const c = state.data.settings.weatherCache;
+  const label = $('#grid [data-widget=weather] .label');
+  if (label && c && c.t !== undefined) label.textContent = c.t + '°C';
+}
+
+function openWeather() {
+  const s = state.data.settings;
+  $('#wtCity').value = s.weatherCity;
+  const cache = s.weatherCache;
+  if (cache && cache.days) renderWeatherDlg(cache);
+  else { $('#wtTemp').textContent = '--'; $('#wtDesc').textContent = '加载中…'; }
+  loadWeather(s.weatherCity)
+    .catch(e => { $('#wtDesc').textContent = '天气获取失败：' + e.message; });
+}
+
+function renderWeatherDlg(info) {
+  $('#wtTemp').textContent = info.t + '°C';
+  $('#wtDesc').textContent = info.city + ' · ' + info.desc;
+  $('#wtDays').innerHTML = (info.days || []).map(d =>
+    `<div class="wt-day"><div class="d">${escapeHtml(d.d)}</div><div class="t">${escapeHtml(d.t)}</div><div class="w">${escapeHtml(d.w)}</div></div>`).join('');
+}
+
+function bindWeather() {
+  $('#wtChange').addEventListener('click', () => {
+    const city = $('#wtCity').value.trim();
+    if (!city) return;
+    state.data.settings.weatherCity = city;
+    persist();
+    $('#wtDesc').textContent = '加载中…';
+    loadWeather(city).catch(e => toast('天气获取失败：' + e.message, 'error'));
+  });
+}
+
+/* ================= 网站目录（本地内置，对齐 inftab 图标库） ================= */
+const SITE_DIRECTORY = [
+  { cat: '常用推荐', sites: [['百度', 'https://www.baidu.com'], ['淘宝', 'https://www.taobao.com'], ['京东', 'https://www.jd.com'], ['哔哩哔哩', 'https://www.bilibili.com'], ['微博', 'https://weibo.com'], ['知乎', 'https://www.zhihu.com'], ['抖音', 'https://www.douyin.com'], ['小红书', 'https://www.xiaohongshu.com'], ['网易云音乐', 'https://music.163.com'], ['腾讯视频', 'https://v.qq.com'], ['爱奇艺', 'https://www.iqiyi.com'], ['拼多多', 'https://www.pinduoduo.com']] },
+  { cat: '新闻资讯', sites: [['澎湃新闻', 'https://www.thepaper.cn'], ['IT之家', 'https://www.ithome.com'], ['少数派', 'https://sspai.com'], ['蓝点网', 'https://www.landiannews.com'], ['新浪新闻', 'https://news.sina.com.cn'], ['腾讯新闻', 'https://news.qq.com'], ['网易新闻', 'https://news.163.com'], ['人民网', 'http://www.people.com.cn'], ['新华网', 'http://www.news.cn'], ['界面新闻', 'https://www.jiemian.com']] },
+  { cat: '购物', sites: [['天猫', 'https://www.tmall.com'], ['唯品会', 'https://www.vip.com'], ['苏宁易购', 'https://www.suning.com'], ['闲鱼', 'https://www.goofish.com'], ['网易严选', 'https://you.163.com'], ['小米商城', 'https://www.mi.com'], ['华为商城', 'https://www.vmall.com']] },
+  { cat: '社交博客', sites: [['豆瓣', 'https://www.douban.com'], ['V2EX', 'https://www.v2ex.com'], ['百度贴吧', 'https://tieba.baidu.com'], ['QQ空间', 'https://qzone.qq.com'], ['X (Twitter)', 'https://x.com'], ['Instagram', 'https://www.instagram.com'], ['Reddit', 'https://www.reddit.com'], ['即刻', 'https://web.okjike.com']] },
+  { cat: '影视视频', sites: [['优酷', 'https://www.youku.com'], ['芒果TV', 'https://www.mgtv.com'], ['搜狐视频', 'https://tv.sohu.com'], ['YouTube', 'https://www.youtube.com'], ['Netflix', 'https://www.netflix.com'], ['Twitch', 'https://www.twitch.tv'], ['西瓜视频', 'https://www.ixigua.com'], ['斗鱼', 'https://www.douyu.com']] },
+  { cat: '音乐', sites: [['QQ音乐', 'https://y.qq.com'], ['酷狗音乐', 'https://www.kugou.com'], ['咪咕音乐', 'https://music.migu.cn'], ['Spotify', 'https://open.spotify.com'], ['Apple Music', 'https://music.apple.com'], ['汽水音乐', 'https://qishui.douyin.com']] },
+  { cat: '学习教育', sites: [['中国大学MOOC', 'https://www.icourse163.org'], ['学堂在线', 'https://www.xuetangx.com'], ['网易公开课', 'https://open.163.com'], ['Coursera', 'https://www.coursera.org'], ['可汗学院', 'https://zh.khanacademy.org'], ['LeetCode', 'https://leetcode.cn'], ['牛客网', 'https://www.nowcoder.com'], ['多邻国', 'https://www.duolingo.cn']] },
+  { cat: '开发工具', sites: [['GitHub', 'https://github.com'], ['Gitee', 'https://gitee.com'], ['Stack Overflow', 'https://stackoverflow.com'], ['MDN', 'https://developer.mozilla.org'], ['掘金', 'https://juejin.cn'], ['CSDN', 'https://www.csdn.net'], ['博客园', 'https://www.cnblogs.com'], ['开源中国', 'https://www.oschina.net'], ['npm', 'https://www.npmjs.com'], ['Can I use', 'https://caniuse.com'], ['菜鸟教程', 'https://www.runoob.com'], ['JSON解析', 'https://www.json.cn']] },
+  { cat: '设计创意', sites: [['稿定设计', 'https://www.gaoding.com'], ['Canva', 'https://www.canva.cn'], ['Figma', 'https://www.figma.com'], ['Dribbble', 'https://dribbble.com'], ['Behance', 'https://www.behance.net'], ['removebg', 'https://www.remove.bg'], ['TinyPNG', 'https://tinypng.com'], ['Iconfont', 'https://www.iconfont.cn'], ['Unsplash', 'https://unsplash.com']] },
+  { cat: '生活服务', sites: [['携程旅行', 'https://www.ctrip.com'], ['飞猪', 'https://www.fligo.com'], ['12306', 'https://www.12306.cn'], ['去哪儿', 'https://www.qunar.com'], ['美团', 'https://www.meituan.com'], ['饿了么', 'https://www.ele.me'], ['下厨房', 'https://www.xiachufang.com'], ['丁香医生', 'https://dxy.com'], ['快递100', 'https://www.kuaidi100.com']] },
+  { cat: '游戏娱乐', sites: [['Steam', 'https://store.steampowered.com'], ['Epic', 'https://store.epicgames.com'], ['4399', 'http://www.4399.com'], ['游民星空', 'https://www.gamersky.com'], ['小黑盒', 'https://www.xiaoheihe.cn'], ['NGA', 'https://bbs.nga.cn']] },
+];
+
+let dirCat = '全部', dirQ = '';
+
+function openDirectory() {
+  dirQ = '';
+  $('#dirSearch').value = '';
+  renderDirCats();
+  renderDirList();
+  $('#dirMask').hidden = false;
+  $('#dirPanel').hidden = false;
+}
+
+function closeDirectory() {
+  $('#dirMask').hidden = true;
+  $('#dirPanel').hidden = true;
+}
+
+function dirIconHTML(entry) {
+  const letter = `<span class="ph" style="background:${tint(entry[0])}">${escapeHtml(entry[0][0])}</span>`;
+  let host = '';
+  try { host = new URL(entry[1]).host; } catch { return letter; }
+  const sources = [
+    `https://${host}/favicon.ico`,
+    `https://icons.duckduckgo.com/ip3/${host}.ico`,
+    `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
+  ];
+  return `${letter}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" alt="" loading="lazy">`;
+}
+
+function renderDirCats() {
+  const box = $('#dirCats');
+  box.innerHTML = '';
+  ['全部', ...SITE_DIRECTORY.map(c => c.cat)].forEach(cat => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dir-cat' + (cat === dirCat && !dirQ ? ' active' : '');
+    b.textContent = cat;
+    b.onclick = () => { dirCat = cat; dirQ = ''; $('#dirSearch').value = ''; renderDirCats(); renderDirList(); };
+    box.append(b);
+  });
+}
+
+function renderDirList() {
+  const box = $('#dirList');
+  const existing = new Set(state.data.sites.map(s => s.url));
+  let entries = [];
+  SITE_DIRECTORY.forEach(c => {
+    if (dirCat !== '全部' && c.cat !== dirCat) return;
+    c.sites.forEach(([name, url]) => {
+      if (dirQ && !name.toLowerCase().includes(dirQ.toLowerCase()) && !url.toLowerCase().includes(dirQ.toLowerCase())) return;
+      entries.push([name, url]);
+    });
+  });
+  box.innerHTML = '';
+  if (!entries.length) { box.innerHTML = '<p class="dir-empty">没有匹配的网站</p>'; return; }
+  entries.forEach(([name, url]) => {
+    const added = existing.has(url);
+    const card = document.createElement('div');
+    card.className = 'dir-card';
+    card.innerHTML = `<span class="dir-icon">${dirIconHTML([name, url])}</span>
+      <span class="dir-info"><b>${escapeHtml(name)}</b><i>${escapeHtml(url.replace(/^https?:\/\//, ''))}</i></span>
+      <button type="button" class="dir-add" ${added ? 'disabled' : ''}>${added ? '已添加' : '添加'}</button>`;
+    card.querySelector('.dir-add').addEventListener('click', e => {
+      state.data.sites.push({ id: uid(), name, url, icon: '', badge: false });
+      persist();
+      e.target.disabled = true;
+      e.target.textContent = '已添加';
+      renderGrid();
+      toast(`已添加「${name}」`);
+    });
+    box.append(card);
+  });
+}
+
+/* ================= 本地壁纸上传（IndexedDB） ================= */
+function idbPut(key, value) {
+  return new Promise((resolve, reject) => {
+    const rq = indexedDB.open('nav-page', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+    rq.onsuccess = () => {
+      const tx = rq.result.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    };
+    rq.onerror = () => reject(rq.error);
+  });
+}
+
+function idbGet(key) {
+  return new Promise((resolve, reject) => {
+    const rq = indexedDB.open('nav-page', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+    rq.onsuccess = () => {
+      const tx = rq.result.transaction('kv', 'readonly');
+      const req = tx.objectStore('kv').get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    };
+    rq.onerror = () => reject(rq.error);
+  });
+}
+
+let wallObjectUrl = '';
+async function applyWallpaperUpload() {
+  if (state.data.settings.wallpaper !== 'upload') return;
+  try {
+    const blob = await idbGet('wallpaper');
+    if (blob) {
+      if (wallObjectUrl) URL.revokeObjectURL(wallObjectUrl);
+      wallObjectUrl = URL.createObjectURL(blob);
+      $('#wallpaper').style.backgroundImage = `url("${wallObjectUrl}")`;
+    }
+  } catch { /* 忽略 */ }
+}
+
+/* ================= 历史备份节点（本机快照） ================= */
+const BACKUP_KEY = 'nav-backups';
+
+function getBackups() {
+  try { return JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveBackupNode() {
+  const arr = getBackups();
+  arr.unshift({ t: Date.now(), payload: cloudPayload() });
+  localStorage.setItem(BACKUP_KEY, JSON.stringify(arr.slice(0, 10)));
+}
+
+function advanceIcon(img) {
+  const list = (img.dataset.sources || '').split('|').filter(Boolean);
+  const i = list.indexOf(img.getAttribute('src') || '');
+  if (i >= 0 && i + 1 < list.length) img.src = list[i + 1];
+  else img.remove();
+}
+
+function bindDirectory() {
+  $('#dirClose').addEventListener('click', closeDirectory);
+  $('#dirMask').addEventListener('click', closeDirectory);
+  $('#dirSearch').addEventListener('input', e => { dirQ = e.target.value.trim(); renderDirList(); });
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('#dirPanel').hidden) closeDirectory();
+  });
 }
 
 /* ================= 启动 ================= */

@@ -19,6 +19,7 @@
 
     <nav class="menu" id="menu" hidden>
       <button data-act="add">＋ 添加网址</button>
+      <button data-act="directory">网站目录</button>
       <button data-act="edit" id="menuEdit">编辑模式</button>
       <hr>
       <button data-act="settings">设置</button>
@@ -37,6 +38,7 @@
       <form class="search-bar" id="searchForm">
         <button type="button" class="engine-logo" id="engineLogo" title="切换搜索引擎"></button>
         <input id="searchInput" type="text" placeholder="输入并搜索" autocomplete="off" spellcheck="false">
+        <button type="submit" class="search-btn" id="searchBtn" hidden>搜索</button>
         <nav class="menu engine-menu" id="engineMenu" hidden></nav>
       </form>
       <ul class="sug-drop" id="sugDrop" hidden></ul>
@@ -122,6 +124,13 @@
           <div class="set-row"><span>隐藏图标名称</span><label class="switch"><input type="checkbox" id="tgHideName"><i></i></label></div>
           <div class="set-row"><span>图标阴影</span><label class="switch"><input type="checkbox" id="tgIconShadow"><i></i></label></div>
           <div class="set-row"><span>启动动画</span><label class="switch"><input type="checkbox" id="tgIconIntro"><i></i></label></div>
+          <div class="set-row col"><span>入场动画效果</span>
+            <select id="selEasing">
+              <option value="default">默认</option>
+              <option value="spring">回弹</option>
+              <option value="fade">淡入</option>
+            </select>
+          </div>
           <div class="set-row col"><span>图标圆角</span>
             <div class="range-row"><input type="range" id="rgIconRadius" min="0" max="100" step="5"><b class="range-val" id="rgIconRadiusVal">50%</b></div>
           </div>
@@ -139,6 +148,7 @@
           <div class="set-row"><span>显示搜索建议</span><label class="switch"><input type="checkbox" id="tgSuggest"><i></i></label></div>
           <div class="set-row"><span>保留搜索框内容</span><label class="switch"><input type="checkbox" id="tgKeepText"><i></i></label></div>
           <div class="set-row"><span>隐藏搜索类别</span><label class="switch"><input type="checkbox" id="tgHideType"><i></i></label></div>
+        <div class="set-row"><span>显示搜索按钮</span><label class="switch"><input type="checkbox" id="tgSearchBtn"><i></i></label></div>
           <div class="set-row col"><span>搜索框大小</span>
             <div class="range-row"><input type="range" id="rgSearchSize" min="70" max="130" step="5"><b class="range-val" id="rgSearchSizeVal">90%</b></div>
           </div>
@@ -169,7 +179,14 @@
           </label>
           <div class="wp-actions">
             <button type="button" class="btn" id="btnGallery">壁纸库（必应每日 / 随机美图）…</button>
+            <label class="btn" id="btnWallUpload">上传本地图片<input type="file" id="wallFile" accept="image/*" hidden></label>
             <label class="check"><input type="checkbox" id="optBingDaily"> 每天自动更换必应壁纸</label>
+          </div>
+          <div class="set-row col"><span>壁纸遮罩</span>
+            <div class="range-row"><input type="range" id="rgWallOpacity" min="0" max="100" step="5"><b class="range-val" id="rgWallOpacityVal">40%</b></div>
+          </div>
+          <div class="set-row col"><span>壁纸模糊</span>
+            <div class="range-row"><input type="range" id="rgWallBlur" min="0" max="20" step="1"><b class="range-val" id="rgWallBlurVal">0</b></div>
           </div>
         </section>
 
@@ -242,6 +259,11 @@
         <label class="check"><input type="checkbox" id="syncAuto"> 修改后自动同步到云端</label>
       </div>
       <p class="sync-status" id="syncStatus"></p>
+      <hr class="dlg-hr">
+      <h4 class="dlg-sub">历史备份节点</h4>
+      <p class="hint">在本机保留最近 10 份快照，可随时恢复；每次拉取云端 / 恢复前会自动备份一份。</p>
+      <div class="backup-bar"><button type="button" class="btn" id="btnBackupNow">立即备份</button></div>
+      <ul class="backup-list" id="backupList"></ul>
     </div>
     <div class="dlg-foot">
       <button class="btn" id="syncPull">从云端拉取</button>
@@ -294,6 +316,68 @@
       <p class="hint">开源：<a href="https://gitee.com/jingjingshenye/nav-page" target="_blank" rel="noopener">gitee.com/jingjingshenye/nav-page</a></p>
     </div>
   </dialog>
+
+  <!-- 待办事项 -->
+  <dialog id="dlgTodo">
+    <div class="dlg-head">
+      <h3>待办事项</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body">
+      <form id="todoForm" class="todo-add">
+        <input id="todoInput" placeholder="添加新待办，回车确认" maxlength="60" autocomplete="off">
+        <button type="submit" class="btn primary">添加</button>
+      </form>
+      <ul class="todo-list" id="todoList"></ul>
+      <p class="hint" id="todoEmpty" hidden>暂无待办，添加一条吧</p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" id="todoClear">清除已完成</button>
+    </div>
+  </dialog>
+
+  <!-- 笔记 -->
+  <dialog id="dlgNote">
+    <div class="dlg-head">
+      <h3>笔记</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body">
+      <textarea id="noteText" placeholder="随手记点什么…（自动保存）"></textarea>
+      <p class="hint" id="noteSaved"></p>
+    </div>
+  </dialog>
+
+  <!-- 天气 -->
+  <dialog id="dlgWeather">
+    <div class="dlg-head">
+      <h3>天气</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body">
+      <div class="wt-now">
+        <b id="wtTemp">--</b>
+        <span id="wtDesc">点击切换城市获取实时天气</span>
+      </div>
+      <div class="wt-days" id="wtDays"></div>
+      <div class="wt-city">
+        <input id="wtCity" placeholder="城市名，如：上海">
+        <button type="button" class="btn" id="wtChange">切换城市</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 网站目录 -->
+  <div class="dir-mask" id="dirMask" hidden></div>
+  <div class="dir-panel" id="dirPanel" hidden>
+    <div class="dir-head">
+      <h3>网站目录</h3>
+      <input id="dirSearch" placeholder="搜索网站">
+      <button type="button" class="dlg-close" id="dirClose" title="关闭">&times;</button>
+    </div>
+    <div class="dir-cats" id="dirCats"></div>
+    <div class="dir-list" id="dirList"></div>
+  </div>
 
   <div class="ctx-menu" id="ctxMenu" hidden></div>
   <div class="toasts" id="toasts"></div>
