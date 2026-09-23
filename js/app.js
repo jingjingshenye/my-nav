@@ -474,6 +474,7 @@ const state = {
   edgePageCreated: false, // 本次拖拽是否已通过末页边缘新建过页（一次拖拽最多新建一页）
   pendingNewPage: false, // 拖到「＋ 新建页」上的标记
   dropPlanIdx: null, // 拖拽落点计划（松手后按此索引精确落位，拖动过程中图标不再互相挤动）
+  dropPlanHard: false, // 落点在空页上：落位时附带硬分页，保住「移到该页」的意图
   extraPages: 0, // 编辑态手动新增的空页数（退出编辑自动回收）
   layout: { cols: 6, rows: 3, card: 98 },
 };
@@ -1199,8 +1200,10 @@ function makeSortable(pg) {
       state.dropMergeId = null;
       state.pendingNewPage = false;
       const plan = state.dropPlanIdx;
+      const planBreak = state.dropPlanHard;
       state.dropPlanIdx = null;
-      if (plan !== null && plan !== undefined) { moveEntryToIndex(id, plan); return; } // 拖动期间未实时排序，按插入条计划落位
+      state.dropPlanHard = false;
+      if (plan !== null && plan !== undefined) { moveEntryToIndex(id, plan, { hardBreak: planBreak }); return; } // 拖动期间未实时排序，按插入条计划落位
       syncOrderFromDOM();
       persist();
       renderGrid();
@@ -2505,6 +2508,7 @@ function bindEvents() {
     state.dropFolderId = null;
     state.dropMergeId = null;
     state.dropPlanIdx = null;
+    state.dropPlanHard = false;
     // 记录抓取点偏移与卡片尺寸：dragover 时据此还原拖影的真实矩形，用于重叠度计算
     const r = card.getBoundingClientRect();
     grab = r.width > 0 ? { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height } : null;
@@ -2558,6 +2562,8 @@ function bindEvents() {
       g = refAfter ? k + 1 : k;
     }
     state.dropPlanIdx = g <= dIdx ? g : g - 1;
+    // 落在无卡片的非首页空页：附带硬分页，图标成为该页第一项，新建/稀疏页因此保得住
+    state.dropPlanHard = !ref && visIdx > 0;
     if (ref) showInsertBar(ref, refAfter);
   };
   const clearHover = () => {
@@ -2619,6 +2625,7 @@ function bindEvents() {
       clearHover();
       hoverCard = card;
       state.dropPlanIdx = null;
+      state.dropPlanHard = false;
       const dragged = state.data.sites.find(x => x.id === state.dragId);
       const target = state.data.sites.find(x => x.id === card.dataset.id);
       if (dragged && !dragged.folder && target) {

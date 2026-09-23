@@ -10,7 +10,6 @@
   --label-size: 13px;
   --label-color: #ffffff;
   --label-shadow: 0 1px 5px rgba(0,0,0,.45);
-  --icon-scale-factor: 1;
   --icon-radius: 50%;
   --icon-opacity: 1;
 }
@@ -261,8 +260,8 @@ body {
 }
 .card .icon {
   position: relative;
-  width: calc(var(--card, 98px) * 0.66 * var(--icon-scale-factor, 1));
-  height: calc(var(--card, 98px) * 0.66 * var(--icon-scale-factor, 1));
+  width: calc(var(--card, 98px) * 0.66);
+  height: calc(var(--card, 98px) * 0.66);
   border-radius: calc(var(--icon-radius-pct, 50) * 1%);
   --icon-shadow: 0 4px 16px rgba(0, 0, 0, .20);
   display: grid; place-items: center;
@@ -509,8 +508,6 @@ label.mt { margin-top: 12px; }
 /* ---------- 响应式 ---------- */
 @media (max-width: 720px) {
   .stage { padding-top: 9vh; }
-  .grid-page { gap: 22px 4px; }
-  .card .icon { width: 56px; height: 56px; }
 }
 
 
@@ -921,6 +918,7 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 @keyframes slide-in-right { from { transform: translateX(40px); opacity: 0; } }
 .edit-close {
   position: absolute; top: 18px; left: -52px;
+  /* 窄屏下面板占 92vw，外侧放不下按钮，收到面板内右上角 */
   width: 36px; height: 36px; border: none; border-radius: 50%;
   background: rgba(255, 255, 255, .92); color: #444;
   font-size: 22px; line-height: 1; cursor: pointer;
@@ -1179,3 +1177,7 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
   display: grid; place-items: center; padding: 0;
 }
 .dot.dot-new.drop-target { background: var(--acc, #16a34a); border-color: transparent; }
+
+@media (max-width: 720px) {
+  .edit-close { left: auto; right: 16px; }
+}
