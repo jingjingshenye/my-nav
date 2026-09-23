@@ -108,7 +108,7 @@ export class GistAdapter {
   async create(data) {
     if (!this.token) throw new Error('请先填写访问令牌（Token）');
     const gist = await this.#request('POST', '/gists', {
-      description: 'nav-page 导航数据',
+      description: '启明 Qiming · 导航数据',
       public: false,
       files: { [this.filename]: { content: JSON.stringify(data, null, 2) } },
     });
