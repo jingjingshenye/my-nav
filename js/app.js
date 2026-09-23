@@ -754,7 +754,7 @@ function applyAppearance() {
   root.setProperty('--label-size', s.fontSize + 'px');
   root.setProperty('--label-shadow', s.fontShadow ? '0 1px 5px rgba(0,0,0,.45)' : 'none');
   root.setProperty('--icon-scale-factor', (s.iconScale / 71).toFixed(3));
-  root.setProperty('--icon-radius', s.iconRadius + '%');
+  root.setProperty('--icon-radius-pct', s.iconRadius);
   root.setProperty('--icon-opacity', (s.iconOpacity / 100).toFixed(2));
   $('.stage').style.zoom = s.pageScale / 100;
   // 遮罩强度：滑杆 0 时也保留 35% 基础遮罩，保证亮色壁纸上文字可读
@@ -971,7 +971,7 @@ function renderEngineMenu() {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'eng-pick' + (e.id === cur.id ? ' on' : '');
-    b.innerHTML = `<span class="eng-glyph" style="background:${e.color || tint(e.name)}">${escapeHtml(e.glyph || e.name[0])}</span><span class="eng-name">${escapeHtml(e.name)}</span>`;
+    b.innerHTML = engineGlyphHTML(e) + `<span class="eng-name">${escapeHtml(e.name)}</span>`;
     b.onclick = () => {
       state.data.settings.engine = e.id;
       persist();
@@ -986,6 +986,18 @@ function renderEngineMenu() {
   add.innerHTML = `<span class="eng-glyph plus">${SVG_PLUS}</span><span class="eng-name">添加</span>`;
   add.onclick = () => { toggleEngineMenu(false); openEngineDialog(null); };
   m.append(add);
+}
+
+function engineGlyphHTML(eng) {
+  const glyph = `<span class="eng-glyph" style="background:${eng.color || tint(eng.name)}">${escapeHtml(eng.glyph || (eng.name || '?')[0])}</span>`;
+  let host = '';
+  try { host = new URL(eng.urls.html).host; } catch { return glyph; }
+  const sources = [
+    `https://${host}/favicon.ico`,
+    `https://icons.duckduckgo.com/ip3/${host}.ico`,
+    `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
+  ].map(u => escapeHtml(u)).join('|');
+  return `${glyph}<img src="${(sources.split('|'))[0]}" data-sources="${sources}" alt="" loading="lazy">`;
 }
 
 function buildSearchUrl(eng, typeId, q) {
@@ -1595,6 +1607,9 @@ function bindEvents() {
     if (e.target.tagName === 'IMG') advanceIcon(e.target);
   }, true);
   $('#dirList').addEventListener('error', e => {
+    if (e.target.tagName === 'IMG') advanceIcon(e.target);
+  }, true);
+  $('#engineMenu').addEventListener('error', e => {
     if (e.target.tagName === 'IMG') advanceIcon(e.target);
   }, true);
 
