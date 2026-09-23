@@ -117,7 +117,6 @@ function seedSettings() {
     openSearchNewTab: true,
     // 视图
     pageScale: 100,
-    showRandomWallBtn: true,
     showPageBtns: false,
     // 布局
     layout: { mode: 'auto', row: 3, col: 6 },
@@ -144,7 +143,6 @@ function seedSettings() {
     animEasing: 'default',
     // 搜索按钮
     searchHideBtn: true,
-    hideWindmill: false,
     // 壁纸遮罩 / 模糊
     wallOpacity: 40,
     wallBlur: 0,
@@ -207,7 +205,6 @@ function normalizeSettings(s = {}) {
   out.fontSize = pct(out.fontSize, 13, 10, 20);
   out.openSitesNewTab = out.openSitesNewTab !== false;
   out.openSearchNewTab = out.openSearchNewTab !== false;
-  out.showRandomWallBtn = out.showRandomWallBtn !== false;
   out.showPageBtns = out.showPageBtns === true;
   out.searchHide = out.searchHide === true;
   out.searchSuggest = out.searchSuggest !== false;
@@ -232,7 +229,8 @@ function normalizeSettings(s = {}) {
   // 旧字段 searchBtn(显示) 迁移为 searchHideBtn(隐藏)
   if (s.searchHideBtn === undefined && s.searchBtn !== undefined) out.searchHideBtn = s.searchBtn === false;
   out.searchHideBtn = out.searchHideBtn !== false; // 默认隐藏（对齐 inftab）
-  out.hideWindmill = out.hideWindmill === true;
+  // 右下角随机壁纸按钮与风车已移除，存量字段一并清理
+  delete out.showRandomWallBtn; delete out.hideWindmill;
   delete out.searchBtn;
   return out;
 }
@@ -501,6 +499,7 @@ function openWallMenu(e) {
     ['收藏当前壁纸', () => favoriteWallpaper()],
     ['下载当前壁纸', () => downloadWallpaper()],
     ['搜索图标', () => openIconFind(), 'Ctrl + F'],
+    ['关于', () => $('#dlgAbout').showModal()],
   ].forEach(([label, fn, sc]) => {
     const b = document.createElement('button');
     b.innerHTML = escapeHtml(label) + (sc ? `<span class="sc">${sc}</span>` : '');
@@ -935,14 +934,12 @@ function applyAppearance() {
   const grid = $('#grid');
   grid.dataset.easing = s.animEasing;
   $('#searchBtn').hidden = s.searchHideBtn;
-  $('#logo').style.display = s.hideWindmill ? 'none' : '';
   grid.classList.toggle('hide-labels', !!s.hideIconName);
   grid.classList.toggle('no-icon-shadow', !s.iconShadow);
   grid.classList.toggle('icon-intro', !!s.iconIntro);
   $('#gridArea').classList.toggle('show-page-btns', !!s.showPageBtns);
   $('#searchArea').style.display = s.searchHide ? 'none' : '';
   $('#engineTabs').style.display = s.searchHideType ? 'none' : '';
-  $('#btnRandomWall').hidden = !s.showRandomWallBtn;
 }
 
 function fillSettingsPane() {
@@ -951,7 +948,6 @@ function fillSettingsPane() {
   $('#tgSearchNewTab').checked = s.openSearchNewTab;
   $('#rgScale').value = s.pageScale;
   $('#rgScaleVal').textContent = s.pageScale + '%';
-  $('#tgRandomWall').checked = s.showRandomWallBtn;
   $('#tgPageBtns').checked = s.showPageBtns;
   renderLayoutPresets();
   $('#tgHideName').checked = s.hideIconName;
@@ -977,7 +973,6 @@ function fillSettingsPane() {
   $('#rgFontSize').value = s.fontSize;
   $('#rgFontSizeVal').textContent = String(s.fontSize);
   $('#tgHideSearchBtn').checked = s.searchHideBtn;
-  $('#tgHideWindmill').checked = s.hideWindmill;
   renderEaseCards();
   $('#rgWallOpacity').value = s.wallOpacity;
   $('#rgWallOpacityVal').textContent = s.wallOpacity + '%';
@@ -1256,14 +1251,12 @@ function flipPage(delta) {
 /* ================= 顶部按钮事件（汉堡直接弹出设置抽屉，对齐 inftab） ================= */
 function bindTopMenu() {
   $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); openPanel('add'); });
-  $('#logo').addEventListener('click', () => $('#dlgAbout').showModal());
-  $('#btnRandomWall').addEventListener('click', () => randomWallpaper());
 
   document.addEventListener('click', e => {
     if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
     if (!$('#wallMenu').hidden && !$('#wallMenu').contains(e.target)) $('#wallMenu').hidden = true;
     // 对齐 inftab：编辑状态下点击其他地方（非图标/面板/控件）即退出编辑
-    if (state.editMode && !e.target.closest('.card, .edit-panel, #dirMask, #sidePanel, dialog, .dots, .round-btn, #btnMenu, #logo, .iconfind-mask')) setEditMode(false);
+    if (state.editMode && !e.target.closest('.card, .edit-panel, #dirMask, #sidePanel, dialog, .dots, .round-btn, #btnMenu, .iconfind-mask')) setEditMode(false);
   });
   // 对齐 inftab：右键空白处弹出壁纸菜单（图标上的右键在 cardEl 内处理）
   document.addEventListener('contextmenu', e => {
@@ -1381,7 +1374,6 @@ function bindSettingsDialog() {
   bind('tgSitesNewTab', 'openSitesNewTab', renderGrid);
   bind('tgSearchNewTab', 'openSearchNewTab');
   bindRange('rgScale', 'rgScaleVal', 'pageScale', applyAppearance);
-  bind('tgRandomWall', 'showRandomWallBtn', applyAppearance);
   bind('tgPageBtns', 'showPageBtns', applyAppearance);
   bind('tgHideName', 'hideIconName', renderGrid);
   bind('tgIconShadow', 'iconShadow', applyAppearance);
@@ -1399,7 +1391,6 @@ function bindSettingsDialog() {
   bind('tgFontShadow', 'fontShadow', renderGrid);
   bindRange('rgFontSize', 'rgFontSizeVal', 'fontSize', renderGrid, '');
   bind('tgHideSearchBtn', 'searchHideBtn', applyAppearance);
-  bind('tgHideWindmill', 'hideWindmill', applyAppearance);
   bindRange('rgWallOpacity', 'rgWallOpacityVal', 'wallOpacity', applyAppearance);
   bindRange('rgWallBlur', 'rgWallBlurVal', 'wallBlur', applyAppearance);
   $('#wallFile').addEventListener('change', e => {

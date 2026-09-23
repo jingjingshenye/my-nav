@@ -334,21 +334,6 @@ body {
 .dot:hover { transform: scale(1.25); }
 .dot.active { background: #fff; }
 
-/* ---------- 页脚 ---------- */
-.footer {
-  position: fixed; right: 20px; bottom: 16px; z-index: 40;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-}
-.round-btn.mini { width: 36px; height: 36px; }
-.round-btn.mini svg { width: 16px; height: 16px; }
-.round-btn:disabled { opacity: .5; cursor: wait; }
-.logo-pinwheel {
-  width: 44px; height: 44px; cursor: pointer;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,.3));
-  transition: transform .2s;
-}
-.logo-pinwheel:hover { transform: scale(1.1) rotate(20deg); }
-
 /* ---------- 对话框 ---------- */
 dialog {
   border: none; border-radius: 14px;

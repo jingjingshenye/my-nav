@@ -6,7 +6,7 @@
   <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
   <title>Nav · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260926d">
+  <link rel="stylesheet" href="css/style.css?v=20260926e">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -40,12 +40,6 @@
     <div class="dots" id="dots"></div>
   </main>
 
-  <footer class="footer">
-    <button class="round-btn mini" id="btnRandomWall" title="随机换一张壁纸" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-4.5-4.5L7 20"/></svg>
-    </button>
-    <img class="logo-pinwheel" id="logo" src="assets/logo.svg" alt="关于" title="关于 Nav">
-  </footer>
 
   <!-- 编辑图标侧边面板（对齐 inftab：右键图标进入编辑，点图标弹出） -->
   <div class="edit-mask" id="editMask" hidden></div>
@@ -194,9 +188,7 @@
           <div class="set-row col"><span>屏幕缩放</span>
             <div class="range-row"><input type="range" id="rgScale" min="60" max="140" step="5"><b class="range-val" id="rgScaleVal">100%</b></div>
           </div>
-          <div class="set-row"><span>在右下角显示随机壁纸按钮</span><label class="switch"><input type="checkbox" id="tgRandomWall"><i></i></label></div>
           <div class="set-row"><span>翻页按钮</span><label class="switch"><input type="checkbox" id="tgPageBtns"><i></i></label></div>
-          <div class="set-row"><span>隐藏右下角风车</span><label class="switch"><input type="checkbox" id="tgHideWindmill"><i></i></label></div>
         </div>
       </section>
 
@@ -384,6 +376,6 @@
   <div class="toasts" id="toasts"></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js?v=20260926d"></script>
+  <script type="module" src="js/app.js?v=20260926e"></script>
 </body>
 </html>
