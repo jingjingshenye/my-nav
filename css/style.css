@@ -110,8 +110,8 @@ body {
   box-shadow: 0 6px 24px rgba(0,0,0,.18);
 }
 .engine-logo {
-  flex: none; width: auto; min-width: 28px; height: 28px; padding: 0 6px;
-  border: none; border-radius: 15px; overflow: hidden;
+  flex: none; width: 28px; height: 28px; padding: 0;
+  border: none; border-radius: 50%; overflow: hidden;
   background: #fff;
   color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
   display: grid; place-items: center;
@@ -121,7 +121,7 @@ body {
 }
 .engine-logo .eng-logo-img {
   position: relative; z-index: 1;
-  display: block; height: 100%; width: auto;
+  display: block; width: 100%; height: 100%; object-fit: cover;
 }
 .search-bar input {
   flex: 1; min-width: 0; height: 100%;
