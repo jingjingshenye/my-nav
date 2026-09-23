@@ -240,6 +240,7 @@ body {
 .grid-pages {
   position: relative;
   width: 100%;
+  transition: height .3s ease;
 }
 .grid-page {
   position: absolute; left: 0; right: 0; top: 0;
@@ -248,11 +249,14 @@ body {
   column-gap: calc(var(--card, 98px) * 0.10);
   row-gap: calc(var(--card, 98px) * 0.30);
   justify-content: center;
-  transition: opacity .18s ease;
+  transition: transform .34s cubic-bezier(.25, .75, .3, 1), opacity .28s ease;
   min-height: 140px;
+  will-change: transform;
 }
 .grid-page.off { opacity: 0; pointer-events: none; }
-}
+/* 待机页停靠在两侧，翻页时滑入/滑出（body overflow:hidden 裁剪，无需 overflow:hidden） */
+.grid-page.pos-l { transform: translateX(-100%); }
+.grid-page.pos-r { transform: translateX(100%); }
 .card {
   display: flex; flex-direction: column; align-items: center; gap: 9px;
   width: var(--card, 98px);

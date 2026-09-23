@@ -947,29 +947,51 @@ function renderGrid() {
   }
 
   pagesBox.classList.toggle('editing', state.editMode);
-  $('#gridPrev').hidden = state.page <= 0;
-  $('#gridNext').hidden = state.page >= pageCount - 1;
+  // 翻页可循环，箭头常驻不再隐藏（避免翻页时箭头反复显示/隐藏造成闪烁）
+  $('#gridPrev').hidden = false;
+  $('#gridNext').hidden = false;
   showPage(state.page);
   bindSortables();
   hydrateIdbIcons(pagesBox);
   applyI18n();
 }
 
-/** 显示某一页：仅切换可见性，不重建 DOM——拖拽进行中也不会中断 */
-function showPage(p) {
-  state.page = p;
+/** 显示某一页：仅切换可见性与停靠位，不重建 DOM——拖拽进行中也不会中断。
+ *  dir=±1 时按翻页方向排布滑动方向（循环翻到对端也保持正确的滑入侧） */
+function showPage(p, dir) {
   const pages = $$('#gridPages .grid-page');
+  const n = pages.length;
+  const box = $('#gridPages');
+  const target = pages[p];
+  if (!target) return;
+  if (dir && n > 1) {
+    // 先把目标页摆到入口侧并强制回流，再激活——否则它会从上次的停靠位滑入，方向不对
+    target.classList.toggle('pos-l', dir === -1);
+    target.classList.toggle('pos-r', dir === 1);
+    void box.offsetWidth;
+  }
   pages.forEach((pg, i) => {
-    pg.classList.toggle('off', i !== p);
-    if (i === p) $('#gridPages').style.height = pg.offsetHeight + 'px';
+    const active = i === p;
+    pg.classList.toggle('off', !active);
+    if (active) {
+      pg.classList.remove('pos-l', 'pos-r');
+    } else {
+      const left = dir === -1 ? !(i > p || (p === n - 1 && i === 0))
+        : dir === 1 ? (i < p || (p === 0 && i === n - 1))
+        : i < p;
+      pg.classList.toggle('pos-l', left);
+      pg.classList.toggle('pos-r', !left);
+    }
   });
+  state.page = p;
+  box.style.height = target.offsetHeight + 'px';
   $$('#dots .dot').forEach((d, i) => d.classList.toggle('active', i === p));
-  $('#gridPrev').hidden = p <= 0;
-  $('#gridNext').hidden = p >= pages.length - 1;
 }
+/** 翻页（循环：末页向后翻回首页，首页向前翻到末页） */
 function flipPage(delta) {
-  const next = Math.max(0, Math.min($$('#gridPages .grid-page').length - 1, state.page + delta));
-  if (next !== state.page) showPage(next);
+  const n = $$('#gridPages .grid-page').length;
+  if (n < 2) return;
+  showPage((state.page + delta + n) % n, delta);
 }
 
 /** 把 DOM 中的顶层顺序读回数据（文件夹子站点保持原相对顺序追加在后） */
@@ -2210,8 +2232,8 @@ function bindEvents() {
     const t = e.target instanceof Element ? e.target : null;
     if (t && t.closest('#sidePanel, dialog, .edit-panel, .folder-view, .engine-menu, .sug-drop, .iconfind-mask, input, textarea, select')) return;
     const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
-    if (dy > 0) { if (state.page < state.pages - 1) { flipPage(1); wheelAt = now; } }
-    else if (dy < 0 && state.page > 0) { flipPage(-1); wheelAt = now; }
+    // 循环翻页：末页继续下滚回首页，首页上滚到末页
+    if (dy > 20 || dy < -20) { flipPage(dy > 0 ? 1 : -1); wheelAt = now; }
   }, { passive: true });
 
   // 拖拽期间：悬停屏幕左右边缘自动翻页；悬停文件夹记录移入目标（Sortable 原生拖拽期间 dragover 持续触发）
