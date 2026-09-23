@@ -73,6 +73,15 @@ const I18N = {
     '已还原默认设置': '已還原預設設定', '已恢复到 {n}': '已還原到 {n}',
     '已创建云端 Gist（{n}），ID 已写入配置': '已建立雲端 Gist（{n}），ID 已寫入配置',
     '初始化失败：': '初始化失敗：', '自定义壁纸': '自訂桌布',
+    '已自动更换今日必应壁纸': '已自動更換今日必應桌布', '该壁纸已在收藏中': '該桌布已在收藏中',
+    '已开始下载当前壁纸': '已開始下載目前桌布', '当前是内置壁纸，无需下载': '目前是內建桌布，無需下載',
+    '图标图片请小于 2MB': '圖示圖片請小於 2MB', '图标保存失败': '圖示儲存失敗', '移除该图标，恢复自动获取': '移除該圖示，恢復自動擷取',
+    '图片过大（超过 4MB），请压缩后再试': '圖片過大（超過 4MB），請壓縮後再試', '已应用本地图片壁纸': '已套用本機圖片桌布', '保存失败，请重试': '儲存失敗，請重試',
+    '请先选择 Gist 云端同步方式': '請先選擇 Gist 雲端同步方式', '请先填写 Gist ID 或推送到云端创建': '請先填寫 Gist ID 或推送到雲端建立',
+    '拉取失败：': '拉取失敗：', '推送失败：': '推送失敗：', '自动同步失败：': '自動同步失敗：',
+    '导入失败：': '匯入失敗：', '加载失败：': '載入失敗：',
+    '请填写引擎名称': '請填寫引擎名稱', '请填写网页搜索地址': '請填寫網頁搜尋位址', '编辑搜索引擎': '編輯搜尋引擎',
+    '该引擎未配置搜索地址': '該引擎未設定搜尋位址',
   },
   en: {
     '网页': 'Web', '图片': 'Images', '新闻': 'News', '视频': 'Videos', '地图': 'Maps',
@@ -132,6 +141,15 @@ const I18N = {
     '已还原默认设置': 'Default settings restored', '已恢复到 {n}': 'Restored backup from {n}',
     '已创建云端 Gist（{n}），ID 已写入配置': 'Cloud Gist {n} created, ID saved to config',
     '初始化失败：': 'Initialization failed: ', '自定义壁纸': 'Custom wallpaper',
+    '已自动更换今日必应壁纸': "Today's Bing wallpaper applied", '该壁纸已在收藏中': 'Already in favorites',
+    '已开始下载当前壁纸': 'Downloading current wallpaper', '当前是内置壁纸，无需下载': 'Built-in wallpaper, nothing to download',
+    '图标图片请小于 2MB': 'Icon image must be under 2MB', '图标保存失败': 'Failed to save icon', '移除该图标，恢复自动获取': 'Remove this icon, back to auto-fetch',
+    '图片过大（超过 4MB），请压缩后再试': 'Image too large (over 4MB), compress it first', '已应用本地图片壁纸': 'Local image wallpaper applied', '保存失败，请重试': 'Save failed, try again',
+    '请先选择 Gist 云端同步方式': 'Choose a Gist cloud sync method first', '请先填写 Gist ID 或推送到云端创建': 'Enter a Gist ID or push to create one first',
+    '拉取失败：': 'Pull failed: ', '推送失败：': 'Push failed: ', '自动同步失败：': 'Auto-sync failed: ',
+    '导入失败：': 'Import failed: ', '加载失败：': 'Load failed: ',
+    '请填写引擎名称': 'Please enter the engine name', '请填写网页搜索地址': 'Please enter the web search URL', '编辑搜索引擎': 'Edit search engine',
+    '该引擎未配置搜索地址': 'This engine has no search URL for this type',
   },
 };
 /** 动态文案翻译（键为简体原文；支持 {n} 占位符） */
@@ -285,7 +303,7 @@ function seedSettings() {
     pageScale: 100,
     showPageBtns: false,
     // 布局
-    layout: { mode: 'auto', row: 3, col: 6 },
+    layout: { mode: 'auto', row: 3, col: 6, gap: 100 },
     // 图标
     hideIconName: false,
     iconShadow: false,
@@ -521,7 +539,7 @@ function persist() {
 }
 
 const queueCloudPush = debounce(() => {
-  pushCloud(false).catch(err => toast('自动同步失败：' + err.message, 'error'));
+  pushCloud(false).catch(err => toast(t('自动同步失败：') + err.message, 'error'));
 }, 1800);
 
 async function pushCloud(notify = true) {
@@ -671,7 +689,7 @@ function favoriteWallpaper() {
   if (!url) { toast(t('当前是内置壁纸，应用网络壁纸后可收藏'), 'error'); return; }
   const s = state.data.settings;
   s.wallFavorites = s.wallFavorites || [];
-  if (s.wallFavorites.some(x => x.url === url)) { toast('该壁纸已在收藏中'); return; }
+  if (s.wallFavorites.some(x => x.url === url)) { toast(t('该壁纸已在收藏中')); return; }
   s.wallFavorites.unshift({ url, thumb: url, title: '收藏于 ' + new Date().toLocaleDateString() });
   s.wallFavorites = s.wallFavorites.slice(0, 12);
   persist();
@@ -680,7 +698,7 @@ function favoriteWallpaper() {
 
 async function downloadWallpaper() {
   const url = currentWallpaperUrl();
-  if (!url) { toast('当前是内置壁纸，无需下载', 'error'); return; }
+  if (!url) { toast(t('当前是内置壁纸，无需下载'), 'error'); return; }
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -690,7 +708,7 @@ async function downloadWallpaper() {
     a.download = 'wallpaper-' + Date.now() + '.jpg';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast('已开始下载当前壁纸');
+    toast(t('已开始下载当前壁纸'));
   } catch { window.open(url, '_blank', 'noopener'); }
 }
 
@@ -789,7 +807,7 @@ async function maybeAutoBingDaily() {
   s.wallpaper = '';
   persist();
   applyWallpaper();
-  toast('已自动更换今日必应壁纸');
+  toast(t('已自动更换今日必应壁纸'));
 }
 
 /** 统一多源图标回退链：依次尝试直到拿到可用图标；全部失败则显示字母头像。
@@ -910,7 +928,8 @@ function cardEl(entry, idx = 0) {
   const labelColor = fc === 'rainbow' ? tint(entry.name) : (fc || '#ffffff');
   const iconMarkup = entry.folder ? folderTileHTML(entry) : iconHTML(entry);
   const siteBadge = !entry.folder && entry.badge ? '<i class="badge"></i>' : '';
-  const countBadge = entry.folder ? `<i class="folder-count">${state.data.sites.filter(x => x.parent === entry.id).length}</i>` : '';
+  const kidCount = entry.folder ? state.data.sites.filter(x => x.parent === entry.id).length : 0;
+  const countBadge = kidCount ? `<i class="folder-count">${kidCount}</i>` : '';
   a.innerHTML = `
     <span class="icon">${iconMarkup}${siteBadge}${countBadge}
       ${state.editMode ? `<button class="edit-go" title="编辑">${SVG_PENCIL}</button><button class="del" title="${entry.folder ? '解散文件夹' : '删除'}">${SVG_X}</button>` : ''}
@@ -939,11 +958,11 @@ function cardEl(entry, idx = 0) {
   return a;
 }
 
-/** 文件夹卡片图标：子站点四宫格缩略（对齐 iOS 文件夹） */
+/** 文件夹卡片图标：子站点四宫格缩略（对齐 iOS 文件夹）。角标由 cardEl 统一渲染 */
 function folderTileHTML(entry) {
   const kids = state.data.sites.filter(x => x.parent === entry.id);
   if (!kids.length) return `<span class="folder-empty">${SVG_FOLDER}</span>`;
-  return `<span class="folder-tile">${kids.slice(0, 4).map(k => `<span class="mini">${dirIconHTML([k.name, k.url])}</span>`).join('')}</span><i class="folder-count">${kids.length}</i>`;
+  return `<span class="folder-tile">${kids.slice(0, 4).map(k => `<span class="mini">${dirIconHTML([k.name, k.url])}</span>`).join('')}</span>`;
 }
 
 /** 编辑态"新建文件夹"入口卡 */
@@ -960,6 +979,7 @@ function moveSiteToFolder(siteId, folderId) {
   const site = state.data.sites.find(x => x.id === siteId);
   const folder = state.data.sites.find(x => x.id === folderId);
   if (!site || !folder) return;
+  transferHardBreak(site);
   site.parent = folderId;
   site.h = 0;
   persist();
@@ -978,7 +998,7 @@ function createFolderWith(dragId, targetId) {
   target.parent = folder.id;
   drag.parent = folder.id;
   target.h = 0;
-  drag.h = 0;
+  transferHardBreak(drag); // 被拖图标若是某页页首，硬分页转移给其后第一个顶层图标（可能就是新文件夹）
   persist();
   renderGrid();
   toast(t('已创建文件夹'));
@@ -1237,19 +1257,25 @@ function normalizeUrl(u) {
   return /^https?:\/\//i.test(u) ? u : 'https://' + u;
 }
 
+/** 顶层图标即将离开桌面（删除 / 移入文件夹 / 合并）时转移其硬分页标记：
+ *  页首（h=1）被移走则把标记交给其后第一个顶层图标，页面构成保持稀疏不重排（手机语义） */
+function transferHardBreak(entry) {
+  if (!entry || !entry.h) return;
+  const arr = state.data.sites;
+  const nextTop = arr.slice(arr.indexOf(entry) + 1).find(x => !x.parent);
+  if (nextTop) nextTop.h = 1;
+  entry.h = 0;
+}
+
 /** 把条目移动到顶层第 targetIdx 个位置（targetIdx 超出总数 = 追加到末尾）。
  *  opts.hardBreak：追加后强制自成一页（「＋ 新建页」语义） */
 function moveEntryToIndex(dragId, targetIdx, opts = {}) {
   const arr = state.data.sites;
   const from = arr.findIndex(x => x.id === dragId);
   if (from < 0) return;
-  const [moved] = arr.splice(from, 1);
-  // 原页首被移走：硬分页标记转移给其后第一个顶层图标，该页剩余构成保持不变
-  if (moved.h) {
-    const nextTop = arr.slice(from).find(x => !x.parent);
-    if (nextTop) nextTop.h = 1;
-    moved.h = 0;
-  }
+  const moved = arr[from];
+  transferHardBreak(moved);
+  arr.splice(from, 1);
   if (!isFinite(targetIdx)) targetIdx = arr.length;
   let seen = 0, insertAt = arr.length;
   for (let i = 0; i < arr.length; i++) {
@@ -1278,6 +1304,7 @@ function removeSite(entry) {
     toast(t('已解散文件夹「{n}」，网址回到桌面', entry.name));
     return;
   }
+  transferHardBreak(entry); // 删除页首图标：硬分页交给其后第一个顶层图标，该页保持稀疏
   state.data.sites = state.data.sites.filter(s => s.id !== entry.id);
   persist();
   renderGrid();
@@ -1399,7 +1426,7 @@ function renderIconPick() {
     if (!removable) return;
     const x = document.createElement('i');
     x.className = 'pick-x';
-    x.title = '移除该图标，恢复自动获取';
+    x.title = t('移除该图标，恢复自动获取');
     x.textContent = '×';
     x.addEventListener('click', e => {
       e.stopPropagation();
@@ -1483,13 +1510,13 @@ function bindSitePanel() {
     const f = e.target.files[0];
     e.target.value = '';
     if (!f) return;
-    if (f.size > 2 * 1024 * 1024) { toast('图标图片请小于 2MB', 'error'); return; }
+    if (f.size > 2 * 1024 * 1024) { toast(t('图标图片请小于 2MB'), 'error'); return; }
     const key = 'icon-' + Date.now();
     try {
       await idbPut(key, f);
       Object.assign(editIcon, { mode: 'idb', url: '', idbKey: key });
       renderIconPick();
-    } catch { toast('图标保存失败', 'error'); }
+    } catch { toast(t('图标保存失败'), 'error'); }
   });
 }
 
@@ -1821,7 +1848,9 @@ function doSearch(qRaw) {
   if (!q.includes(' ') && LOOKS_LIKE_URL.test(q)) {
     target = /^https?:\/\//i.test(q) ? q : 'https://' + q;
   } else {
-    target = buildSearchUrl(resolveEngine(), activeType().id, q);
+    const eng = resolveEngine(), typeId = activeType().id;
+    if (!((eng.urls || {})[typeId] || (eng.urls || {}).html)) { toast(t('该引擎未配置搜索地址'), 'error'); return; }
+    target = buildSearchUrl(eng, typeId, q);
   }
   if (state.data.settings.openSearchNewTab) window.open(target, '_blank');
   else location.href = target;
@@ -2018,7 +2047,7 @@ function bindSettingsDialog() {
     const f = e.target.files[0];
     e.target.value = '';
     if (!f) return;
-    if (f.size > 4 * 1024 * 1024) { toast('图片过大（超过 4MB），请压缩后再试', 'error'); return; }
+    if (f.size > 4 * 1024 * 1024) { toast(t('图片过大（超过 4MB），请压缩后再试'), 'error'); return; }
     idbPut('wallpaper', f).then(() => {
       const s = state.data.settings;
       s.wallpaper = 'upload';
@@ -2026,8 +2055,8 @@ function bindSettingsDialog() {
       persist();
       applyWallpaper();
       applyWallpaperUpload();
-      toast('已应用本地图片壁纸');
-    }).catch(() => toast('保存失败，请重试', 'error'));
+      toast(t('已应用本地图片壁纸'));
+    }).catch(() => toast(t('保存失败，请重试'), 'error'));
   });
 
   // 壁纸与高级（失焦/回车保存）
@@ -2120,7 +2149,7 @@ function removeEngine(engine) {
 
 function openEngineDialog(engine) {
   const adding = !engine;
-  $('#engDlgTitle').textContent = adding ? '添加搜索引擎' : '编辑搜索引擎';
+  $('#engDlgTitle').textContent = adding ? t('添加搜索引擎') : t('编辑搜索引擎');
   $('#engId').value = engine ? engine.id : '';
   $('#engName').value = engine ? engine.name : '';
   const u = engine ? engine.urls : {};
@@ -2171,8 +2200,8 @@ function bindEngineDialog() {
       const v = $('#' + id).value.trim();
       if (v) urls[t.id] = v;
     }
-    if (!name) { showErr('请填写引擎名称'); return; }
-    if (!urls.html) { showErr('请填写网页搜索地址'); return; }
+    if (!name) { showErr(t('请填写引擎名称')); return; }
+    if (!urls.html) { showErr(t('请填写网页搜索地址')); return; }
     const s = state.data.settings;
     const id = $('#engId').value;
     if (id) {
@@ -2289,18 +2318,18 @@ function bindSyncDialog() {
   $('#syncPull').addEventListener('click', async () => {
     try {
       saveSyncCfg();
-      if (!isGistType(state.data.settings.sync.type)) { toast('请先选择 Gist 云端同步方式', 'error'); return; }
-      if (!state.data.settings.sync.gistId) { toast('请先填写 Gist ID 或推送到云端创建', 'error'); return; }
+      if (!isGistType(state.data.settings.sync.type)) { toast(t('请先选择 Gist 云端同步方式'), 'error'); return; }
+      if (!state.data.settings.sync.gistId) { toast(t('请先填写 Gist ID 或推送到云端创建'), 'error'); return; }
       await pullCloud();
       fillSyncDialog();
-    } catch (e) { toast('拉取失败：' + e.message, 'error'); }
+    } catch (e) { toast(t('拉取失败：') + e.message, 'error'); }
   });
   $('#syncPush').addEventListener('click', async () => {
     try {
       saveSyncCfg();
       await pushCloud();
       fillSyncDialog();
-    } catch (e) { toast('推送失败：' + e.message, 'error'); }
+    } catch (e) { toast(t('推送失败：') + e.message, 'error'); }
   });
 }
 
@@ -2335,7 +2364,7 @@ function bindImport() {
         persist();
         renderAll();
         toast(t('已导入 {n} 个网址', state.data.sites.length));
-      } catch (err) { toast('导入失败：' + err.message, 'error'); }
+      } catch (err) { toast(t('导入失败：') + err.message, 'error'); }
     };
     reader.readAsText(file, 'utf-8');
   });
@@ -2432,7 +2461,8 @@ function bindEvents() {
       e.preventDefault();
       openIconFind();
     }
-    if (!typing && $('#iconFind').hidden) {
+    // 浮层（文件夹 / 编辑面板 / 抽屉 / 搜索浮层）打开时不响应翻页，避免误翻底层网格
+    if (!typing && $('#iconFind').hidden && $('#folderView').hidden && $('#editPanel').hidden && $('#sidePanel').hidden) {
       if (e.key === 'ArrowRight') flipPage(1);
       if (e.key === 'ArrowLeft') flipPage(-1);
     }
@@ -2512,7 +2542,7 @@ function bindEvents() {
     const allTop = [];
     allPages.forEach(pg => pg.querySelectorAll(':scope > .card').forEach(el => { if (el.dataset.id) allTop.push(el); }));
     const dIdx = allTop.findIndex(el => el.dataset.id === state.dragId);
-    const visCards = visIdx >= 0 ? [...allPages[visIdx].querySelectorAll(':scope > .card')] : [];
+    const visCards = visIdx >= 0 ? [...allPages[visIdx].querySelectorAll(':scope > .card')].filter(el => el.dataset.id) : [];
     let ref = null, refAfter = false, bestDist = Infinity;
     visCards.forEach(el => {
       if (el.dataset.id === state.dragId) return;
@@ -2804,7 +2834,7 @@ async function loadDefaultData() {
     persist();
     renderAll();
     toast(t('已加载内置数据（{n} 个网站）', state.data.sites.length));
-  } catch (e) { toast('加载失败：' + e.message, 'error'); }
+  } catch (e) { toast(t('加载失败：') + e.message, 'error'); }
 }
 
 /* ================= 启动 ================= */
