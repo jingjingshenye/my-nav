@@ -303,9 +303,11 @@ const cloudPayload = () => {
   return { version, sites, settings: { ...settings, sync: { ...settings.sync, token: '' } } };
 };
 
+const isGistType = t => t === 'gitee-gist' || t === 'github-gist';
+
 const canAutoSync = () => {
   const s = state.data.settings.sync;
-  return s.type === 'gitee-gist' && s.autoSync && s.token && s.gistId;
+  return isGistType(s.type) && s.autoSync && s.token && s.gistId;
 };
 
 function persist() {
@@ -319,7 +321,7 @@ const queueCloudPush = debounce(() => {
 
 async function pushCloud(notify = true) {
   const cfg = state.data.settings.sync;
-  if (cfg.type !== 'gitee-gist') throw new Error('当前未启用云端同步');
+  if (!isGistType(cfg.type)) throw new Error('当前未启用云端同步');
   const adapter = createAdapter(cfg);
   if (!cfg.gistId) {
     cfg.gistId = await adapter.create(cloudPayload());
@@ -1570,6 +1572,17 @@ function bindEngineDialog() {
 }
 
 /* ================= 数据同步对话框 ================= */
+/** 云端配置区随所选平台（Gitee / GitHub）切换标题、令牌提示与占位符 */
+function updateSyncBrandUI(type) {
+  const github = type === 'github-gist';
+  $('#giteeFields').hidden = !isGistType(type);
+  $('#syncCfgTitle').textContent = github ? 'GitHub Gist 配置' : 'Gitee 云端配置';
+  $('#syncTokenHint').innerHTML = github
+    ? '创建：<a href="https://github.com/settings/tokens" target="_blank" rel="noopener">GitHub → Settings → Developer settings → Tokens</a>（选 <b>Classic</b>，勾选 <b>gist</b> 权限），仅保存在本机浏览器'
+    : '还没有？<a href="https://gitee.com/profile/personal_access_tokens" target="_blank" rel="noopener">去 Gitee 创建私令牌 →</a>（勾选 gists 权限，仅保存在本机浏览器）';
+  $('#syncToken').placeholder = github ? 'ghp_xxxxxxxx 或 github_pat_xxxxxxxx' : 'gtp_xxxxxxxx';
+}
+
 function fillSyncDialog() {
   const s = state.data.settings.sync;
   $('#syncType').value = s.type;
@@ -1577,7 +1590,7 @@ function fillSyncDialog() {
   $('#syncGistId').value = s.gistId || '';
   $('#syncFile').value = s.filename || DATA_FILE;
   $('#syncAuto').checked = !!s.autoSync;
-  $('#giteeFields').hidden = s.type !== 'gitee-gist';
+  updateSyncBrandUI(s.type);
   $('#syncTimeText').textContent = s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString() : '从未';
   renderBackups();
   updateSyncStatus();
@@ -1599,11 +1612,12 @@ function updateSyncStatus() {
   const el = $('#syncStatus');
   if (!el) return;
   const s = state.data.settings;
-  if (s.sync.type !== 'gitee-gist') {
+  if (!isGistType(s.sync.type)) {
     el.textContent = '当前数据仅保存在本机浏览器。';
     return;
   }
-  el.textContent = `云端 Gist：${s.sync.gistId || '尚未创建'}　上次同步：${s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString() : '从未'}`;
+  const platform = s.sync.type === 'github-gist' ? 'GitHub' : 'Gitee';
+  el.textContent = `${platform} Gist：${s.sync.gistId || '尚未创建'}　上次同步：${s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString() : '从未'}`;
 }
 
 function renderBackups() {
@@ -1654,13 +1668,11 @@ function bindSyncDialog() {
     renderBackups();
     toast('已创建备份节点');
   });
-  $('#syncType').addEventListener('change', () => {
-    $('#giteeFields').hidden = $('#syncType').value !== 'gitee-gist';
-  });
+  $('#syncType').addEventListener('change', () => updateSyncBrandUI($('#syncType').value));
   $('#syncPull').addEventListener('click', async () => {
     try {
       saveSyncCfg();
-      if (state.data.settings.sync.type !== 'gitee-gist') { toast('请先选择「Gitee Gist」同步方式', 'error'); return; }
+      if (!isGistType(state.data.settings.sync.type)) { toast('请先选择 Gist 云端同步方式', 'error'); return; }
       if (!state.data.settings.sync.gistId) { toast('请先填写 Gist ID 或推送到云端创建', 'error'); return; }
       await pullCloud();
       fillSyncDialog();

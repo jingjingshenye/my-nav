@@ -6,7 +6,7 @@
   <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
   <title>Nav · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260926f">
+  <link rel="stylesheet" href="css/style.css?v=20260927a">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -121,18 +121,19 @@
             <select id="syncType">
               <option value="local">仅本地</option>
               <option value="gitee-gist">Gitee Gist 云端</option>
+              <option value="github-gist">GitHub Gist 云端</option>
             </select>
           </div>
         </div>
       </section>
 
       <section class="set-card" id="giteeFields" hidden>
-        <div class="set-head"><h4>Gitee 云端配置</h4></div>
+        <div class="set-head"><h4 id="syncCfgTitle">Gitee 云端配置</h4></div>
         <div class="set-body">
-          <label class="plain">Gitee 私令牌 Token
+          <label class="plain">访问令牌 Token
             <input id="syncToken" type="password" placeholder="gtp_xxxxxxxx" autocomplete="off">
           </label>
-          <p class="hint">还没有？<a href="https://gitee.com/profile/personal_access_tokens" target="_blank" rel="noopener">去 Gitee 创建私令牌 →</a>（勾选 gists 权限，仅保存在本机浏览器）</p>
+          <p class="hint" id="syncTokenHint"></p>
           <label class="plain">Gist ID
             <input id="syncGistId" placeholder="留空则推送时自动创建">
           </label>
@@ -376,6 +377,6 @@
   <div class="toasts" id="toasts"></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js?v=20260926f"></script>
+  <script type="module" src="js/app.js?v=20260927a"></script>
 </body>
 </html>
