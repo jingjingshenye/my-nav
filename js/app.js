@@ -199,7 +199,7 @@ function normalizeSettings(s = {}) {
   out.iconRadius = pct(out.iconRadius, 50, 0, 100);
   out.iconOpacity = pct(out.iconOpacity, 100, 30, 100);
   out.iconScale = pct(out.iconScale, 71, 50, 120);
-  out.searchScale = pct(out.searchScale, 90, 70, 130);
+  out.searchScale = pct(out.searchScale, 90, 70, 160);
   out.searchRadius = pct(out.searchRadius, 20, 0, 60);
   out.searchOpacity = pct(out.searchOpacity, 100, 30, 100);
   out.fontSize = pct(out.fontSize, 13, 10, 20);
@@ -915,7 +915,8 @@ function bindSitePanel() {
 function applyAppearance() {
   const s = state.data.settings;
   const root = document.documentElement.style;
-  root.setProperty('--search-w', `min(${Math.round(560 * s.searchScale / 100)}px, 90vw)`);
+  root.setProperty('--search-w', `min(${Math.round(640 * s.searchScale / 100)}px, 92vw)`);
+  root.setProperty('--search-h', Math.min(58, Math.round(44 * s.searchScale / 100)) + 'px');
   root.setProperty('--search-radius', Math.round(44 * s.searchRadius / 100) + 'px');
   root.setProperty('--search-alpha', (s.searchOpacity / 100).toFixed(2));
   root.setProperty('--label-size', s.fontSize + 'px');
