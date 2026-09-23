@@ -246,8 +246,8 @@ body {
   position: absolute; left: 0; right: 0; top: 0;
   display: grid;
   grid-template-columns: repeat(var(--cols, 6), var(--card, 98px));
-  column-gap: calc(var(--card, 98px) * 0.10);
-  row-gap: calc(var(--card, 98px) * 0.30);
+  column-gap: calc(var(--card, 98px) * 0.10 * var(--gap-factor, 1));
+  row-gap: calc(var(--card, 98px) * 0.30 * var(--gap-factor, 1));
   justify-content: center;
   transition: transform .34s cubic-bezier(.25, .75, .3, 1), opacity .28s ease;
   min-height: 140px;

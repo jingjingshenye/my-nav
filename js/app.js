@@ -19,7 +19,7 @@ const I18N = {
     '添加': '新增', '设置': '設定', '搜索': '搜尋', '删除': '刪除', '恢复': '還原',
     '输入并搜索': '輸入並搜尋', '搜索网站': '搜尋網站', '＋ 自定义': '＋ 自訂', '全部': '全部',
     '目标打开方式': '目標打開方式', '在新标签页中打开网站': '在新分頁中開啟網站', '在新标签页中打开第三方搜索结果': '在新分頁中開啟第三方搜尋結果',
-    '语言': '語言', '语言选择': '語言選擇', '视图': '檢視', '屏幕缩放': '螢幕縮放', '翻页按钮': '翻頁按鈕',
+    '语言': '語言', '语言选择': '語言選擇', '视图': '檢視', '屏幕缩放': '螢幕縮放', '翻页按钮': '翻頁按鈕', '行数': '行數', '列数': '列數', '间距': '間距',
     '布局': '版面', '图标': '圖示', '隐藏图标名称': '隱藏圖示名稱', '图标阴影': '圖示陰影', '启动动画': '啟動動畫',
     '图标圆角': '圖示圓角', '图标不透明度': '圖示不透明度', '图标大小': '圖示大小',
     '搜索框': '搜尋框', '隐藏搜索框': '隱藏搜尋框', '显示搜索建议': '顯示搜尋建議', '保留搜索框内容': '保留搜尋框內容',
@@ -79,7 +79,7 @@ const I18N = {
     '添加': 'Add', '设置': 'Settings', '搜索': 'Search', '删除': 'Delete', '恢复': 'Restore',
     '输入并搜索': 'Search or type URL', '搜索网站': 'Search sites', '＋ 自定义': '＋ Custom', '全部': 'All',
     '目标打开方式': 'Link opening', '在新标签页中打开网站': 'Open sites in new tab', '在新标签页中打开第三方搜索结果': 'Open third-party results in new tab',
-    '语言': 'Language', '语言选择': 'Language', '视图': 'View', '屏幕缩放': 'Page zoom', '翻页按钮': 'Page buttons',
+    '语言': 'Language', '语言选择': 'Language', '视图': 'View', '屏幕缩放': 'Page zoom', '翻页按钮': 'Page buttons', '行数': 'Rows', '列数': 'Columns', '间距': 'Spacing',
     '布局': 'Layout', '图标': 'Icons', '隐藏图标名称': 'Hide icon labels', '图标阴影': 'Icon shadow', '启动动画': 'Launch animation',
     '图标圆角': 'Icon corner radius', '图标不透明度': 'Icon opacity', '图标大小': 'Icon size',
     '搜索框': 'Search box', '隐藏搜索框': 'Hide search box', '显示搜索建议': 'Search suggestions', '保留搜索框内容': 'Keep search text',
@@ -358,8 +358,10 @@ function normalizeSettings(s = {}) {
   delete out.engineByType; // 旧版字段
   if (!out.layout || typeof out.layout !== 'object') out.layout = { ...def.layout };
   if (out.layout.mode !== 'fixed') out.layout.mode = 'auto';
-  out.layout.row = Math.min(6, Math.max(1, parseInt(out.layout.row, 10) || 3));
-  out.layout.col = Math.min(12, Math.max(3, parseInt(out.layout.col, 10) || 6));
+  out.layout.row = Math.min(10, Math.max(1, parseInt(out.layout.row, 10) || 3));
+  out.layout.col = Math.min(16, Math.max(2, parseInt(out.layout.col, 10) || 6));
+  const gap = parseInt(out.layout.gap, 10);
+  out.layout.gap = isNaN(gap) ? 100 : Math.min(200, Math.max(0, gap));
   const pct = (v, d, lo, hi) => Math.min(hi, Math.max(lo, parseInt(v, 10) || d));
   out.pageScale = pct(out.pageScale, 100, 60, 140);
   out.iconRadius = pct(out.iconRadius, 50, 0, 100);
@@ -480,10 +482,13 @@ function computeLayout() {
   const availH = Math.max(220, vh - areaTop - 96); // 预留翻页圆点与页脚
   card = Math.min(card, Math.floor(vw * 0.94 / 3), Math.floor(availH / 2));
 
-  // 列数/行数：优先尊重设置值，但以实际能放进屏幕为准
-  const colsFit = Math.max(2, Math.floor((vw * 0.94) / (card + 8)));
+  // 列数/行数：优先尊重设置值，但以实际能放进屏幕为准；间距设置计入纵横步距
+  const g = Math.max(0, Math.min(2, (s.gap ?? 100) / 100));
+  const colPitch = card * (1 + 0.10 * g);
+  const colsFit = Math.max(2, Math.floor((vw * 0.94) / colPitch));
   const cols = Math.max(2, Math.min(colsBase, colsFit));
-  const rowsFit = Math.max(1, Math.floor((availH - 16) / (card * 1.42)));
+  const rowPitch = card * (1.42 + 0.30 * (g - 1));
+  const rowsFit = Math.max(1, Math.floor((availH - 16) / rowPitch));
   const rows = Math.max(1, Math.min(rowsCap, rowsFit));
   state.layout = { cols, rows, card };
 }
@@ -951,6 +956,7 @@ function renderGrid() {
     pg.dataset.page = p;
     pg.style.setProperty('--cols', state.layout.cols);
     pg.style.setProperty('--card', state.layout.card + 'px');
+    pg.style.setProperty('--gap-factor', (state.data.settings.layout.gap ?? 100) / 100);
     const slice = pageSlices[p] || [];
     if (slice.length) {
       slice.forEach((en, i) => pg.append(cardEl(en, i)));
@@ -1125,6 +1131,7 @@ function appendDragPage() {
   pg.dataset.page = state.pages;
   pg.style.setProperty('--cols', state.layout.cols);
   pg.style.setProperty('--card', state.layout.card + 'px');
+  pg.style.setProperty('--gap-factor', (state.data.settings.layout.gap ?? 100) / 100);
   pagesBox.append(pg);
   state.pages += 1;
   if (typeof Sortable !== 'undefined') makeSortable(pg);
@@ -1424,6 +1431,13 @@ function fillSettingsPane() {
   $('#tgSitesNewTab').checked = s.openSitesNewTab;
   $('#tgSearchNewTab').checked = s.openSearchNewTab;
   $('#tgPageBtns').checked = s.showPageBtns;
+  const lay = s.layout;
+  $('#rgLayoutRows').value = lay.row;
+  $('#rgLayoutRowsVal').textContent = lay.row;
+  $('#rgLayoutCols').value = lay.col;
+  $('#rgLayoutColsVal').textContent = lay.col;
+  $('#rgLayoutGap').value = lay.gap ?? 100;
+  $('#rgLayoutGapVal').textContent = (lay.gap ?? 100) + '%';
   renderLayoutPresets();
   $('#tgHideName').checked = s.hideIconName;
   $('#tgIconShadow').checked = s.iconShadow;
@@ -1873,6 +1887,22 @@ function bindSettingsDialog() {
   bindRange('rgIconRadius', 'rgIconRadiusVal', 'iconRadius', applyAppearance);
   bindRange('rgIconOpacity', 'rgIconOpacityVal', 'iconOpacity', applyAppearance);
   // 图标大小改变网格布局（卡片尺寸/列数/行数），需重排
+  // 布局自定义：行列/间距，改动即进入固定模式并重排
+  const bindLayoutRange = (id, valId, key, suffix = '') => {
+    const el = $('#' + id);
+    el.addEventListener('input', () => {
+      const v = parseInt(el.value, 10);
+      $('#' + valId).textContent = v + suffix;
+      state.data.settings.layout[key] = v;
+      state.data.settings.layout.mode = 'fixed';
+      persistLocal();
+      debounce(renderGrid, 120)();
+      renderLayoutPresets();
+    });
+  };
+  bindLayoutRange('rgLayoutRows', 'rgLayoutRowsVal', 'row');
+  bindLayoutRange('rgLayoutCols', 'rgLayoutColsVal', 'col');
+  bindLayoutRange('rgLayoutGap', 'rgLayoutGapVal', 'gap', '%');
   bindRange('rgIconScale', 'rgIconScaleVal', 'iconScale', () => { applyAppearance(); debounce(renderGrid, 120)(); });
   bind('tgSearchHide', 'searchHide', applyAppearance);
   bind('tgSuggest', 'searchSuggest');

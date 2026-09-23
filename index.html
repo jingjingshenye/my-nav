@@ -6,7 +6,7 @@
   <meta name="description" content="启明 Qiming · 黎明第一颗星的极简新标签页导航，数据云端同步，随处可用">
   <title>启明 Qiming · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260929o">
+  <link rel="stylesheet" href="css/style.css?v=20260929p">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -254,6 +254,15 @@
         <div class="set-head"><h4>布局</h4><button type="button" class="cl">&mdash;</button></div>
         <div class="set-body">
           <div class="layout-presets" id="layoutPresets"></div>
+          <div class="set-row col"><span>行数</span>
+            <div class="range-row"><input type="range" id="rgLayoutRows" min="1" max="10" step="1"><b class="range-val" id="rgLayoutRowsVal">5</b></div>
+          </div>
+          <div class="set-row col"><span>列数</span>
+            <div class="range-row"><input type="range" id="rgLayoutCols" min="2" max="16" step="1"><b class="range-val" id="rgLayoutColsVal">8</b></div>
+          </div>
+          <div class="set-row col"><span>间距</span>
+            <div class="range-row"><input type="range" id="rgLayoutGap" min="0" max="200" step="10"><b class="range-val" id="rgLayoutGapVal">100%</b></div>
+          </div>
         </div>
       </section>
       <section class="set-card">
@@ -379,6 +388,6 @@
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
   <script src="js/vendor/sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=20260929o"></script>
+  <script type="module" src="js/app.js?v=20260929p"></script>
 </body>
 </html>
