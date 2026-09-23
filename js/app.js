@@ -8,6 +8,7 @@ const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = se
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SVG_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const SVG_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+const SVG_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5a2 2 0 012-2h4l2 2.5h7a2 2 0 012 2v8.5a2 2 0 01-2 2h-13a2 2 0 01-2-2z"/></svg>';
 const SVG_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
 
 function tint(name) {
@@ -236,6 +237,14 @@ function normalizeSettings(s = {}) {
   return out;
 }
 
+function normalizeSite(s = {}) {
+  return {
+    id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
+    icon: s.icon || '', avatar: !!s.avatar, badge: !!s.badge,
+    folder: !!s.folder, parent: s.parent || '',
+  };
+}
+
 function seedSites() {
   const list = [
     ['百度', 'https://www.baidu.com'],
@@ -267,7 +276,10 @@ const state = {
   pages: 1,
   editMode: false,
   dragId: null,
-  editingId: null, // 当前正在编辑的站点 id（null = 添加）
+  editingId: null, // 当前正在编辑的条目 id（null = 添加）
+  editingFolder: false, // 编辑面板当前操作的是文件夹
+  editingParent: '', // 新建网址的目标文件夹 id（空 = 桌面）
+  openFolderId: null, // 当前打开的文件夹 id
   layout: { cols: 6, rows: 3, card: 98 },
 };
 
@@ -346,10 +358,7 @@ async function pullCloud(notify = true) {
   const keepSync = state.data.settings.sync; // 本机的同步凭据不被云端覆盖
   state.data = {
     version: 1,
-    sites: payload.sites.map(s => ({
-      id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
-      icon: s.icon || '', avatar: !!s.avatar, badge: !!s.badge,
-    })),
+    sites: payload.sites.map(normalizeSite),
     settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync },
   };
   state.page = 0;
@@ -634,32 +643,40 @@ async function hydrateIdbIcons(root) {
   }
 }
 
-function cardEl(site, idx = 0) {
+function cardEl(entry, idx = 0) {
   const a = document.createElement('a');
-  a.className = 'card';
-  a.href = site.url;
-  a.target = state.data.settings.openSitesNewTab ? '_blank' : '_self';
-  if (a.target === '_blank') a.rel = 'noopener';
-  a.dataset.id = site.id;
-  a.title = site.url;
+  a.className = 'card' + (entry.folder ? ' folder-card' : '');
+  if (entry.url) {
+    a.href = entry.url;
+    a.target = state.data.settings.openSitesNewTab ? '_blank' : '_self';
+    if (a.target === '_blank') a.rel = 'noopener';
+  } else { a.href = '#'; }
+  a.dataset.id = entry.id;
+  a.title = entry.url || entry.name;
   a.style.setProperty('--i', idx);
   const fc = state.data.settings.fontColor;
-  const labelColor = fc === 'rainbow' ? tint(site.name) : (fc || '#ffffff');
+  const labelColor = fc === 'rainbow' ? tint(entry.name) : (fc || '#ffffff');
+  const iconMarkup = entry.folder ? folderTileHTML(entry) : iconHTML(entry);
+  const siteBadge = !entry.folder && entry.badge ? '<i class="badge"></i>' : '';
+  const countBadge = entry.folder ? `<i class="folder-count">${state.data.sites.filter(x => x.parent === entry.id).length}</i>` : '';
   a.innerHTML = `
-    <span class="icon">${iconHTML(site)}${site.badge ? '<i class="badge"></i>' : ''}
-      ${state.editMode ? `<button class="edit-go" title="编辑">${SVG_PENCIL}</button><button class="del" title="删除">${SVG_X}</button>` : ''}
+    <span class="icon">${iconMarkup}${siteBadge}${countBadge}
+      ${state.editMode ? `<button class="edit-go" title="编辑">${SVG_PENCIL}</button><button class="del" title="${entry.folder ? '解散文件夹' : '删除'}">${SVG_X}</button>` : ''}
     </span>
-    <span class="label" style="color:${labelColor}">${escapeHtml(site.name)}</span>`;
+    <span class="label" style="color:${labelColor}">${escapeHtml(entry.name)}</span>`;
 
   if (state.editMode) {
     a.classList.add('draggable');
     a.draggable = true;
-    a.addEventListener('click', e => { e.preventDefault(); openSiteDialog(site); });
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      if (entry.folder) openFolder(entry); else openSiteDialog(entry);
+    });
     a.addEventListener('dragstart', e => {
-      state.dragId = site.id;
+      state.dragId = entry.id;
       a.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
-      try { e.dataTransfer.setData('text/plain', site.id); } catch { /* ignore */ }
+      try { e.dataTransfer.setData('text/plain', entry.id); } catch { /* ignore */ }
     });
     a.addEventListener('dragend', () => {
       state.dragId = null;
@@ -667,7 +684,7 @@ function cardEl(site, idx = 0) {
       $$('.drop-target').forEach(x => x.classList.remove('drop-target'));
     });
     a.addEventListener('dragover', e => {
-      if (!state.dragId || state.dragId === site.id) return;
+      if (!state.dragId || state.dragId === entry.id) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       a.classList.add('drop-target');
@@ -676,21 +693,53 @@ function cardEl(site, idx = 0) {
     a.addEventListener('drop', e => {
       e.preventDefault();
       a.classList.remove('drop-target');
-      reorder(state.dragId, site.id);
+      const dragged = state.data.sites.find(x => x.id === state.dragId);
+      if (entry.folder && dragged && !dragged.folder && dragged.id !== entry.id) { moveSiteToFolder(dragged.id, entry.id); return; }
+      if (dragged && dragged.parent) return; // 文件夹内的站点不参与桌面排序
+      reorder(state.dragId, entry.id);
     });
+  } else if (entry.folder) {
+    a.addEventListener('click', e => { e.preventDefault(); openFolder(entry); });
   }
 
   // 对齐 inftab：右键图标进入编辑状态（×标记）；已在编辑状态时右键 = 直接打开编辑面板
   a.addEventListener('contextmenu', e => {
     e.preventDefault();
     if (!state.editMode) setEditMode(true);
-    else openSiteDialog(site);
+    else openSiteDialog(entry);
   });
   const editGo = $('.edit-go', a);
-  if (editGo) editGo.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openSiteDialog(site); });
+  if (editGo) editGo.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openSiteDialog(entry); });
   const del = $('.del', a);
-  if (del) del.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); removeSite(site); });
+  if (del) del.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); removeSite(entry); });
   return a;
+}
+
+/** 文件夹卡片图标：子站点四宫格缩略（对齐 iOS 文件夹） */
+function folderTileHTML(entry) {
+  const kids = state.data.sites.filter(x => x.parent === entry.id);
+  if (!kids.length) return `<span class="folder-empty">${SVG_FOLDER}</span>`;
+  return `<span class="folder-tile">${kids.slice(0, 4).map(k => `<span class="mini">${dirIconHTML([k.name, k.url])}</span>`).join('')}</span><i class="folder-count">${kids.length}</i>`;
+}
+
+/** 编辑态"新建文件夹"入口卡 */
+function addFolderEl() {
+  const a = document.createElement('a');
+  a.className = 'card add-card';
+  a.innerHTML = `<span class="icon">${SVG_FOLDER}</span><span class="label">新建文件夹</span>`;
+  a.addEventListener('click', e => { e.preventDefault(); openSiteDialog(null, { folder: true }); });
+  return a;
+}
+
+/** 把站点移入文件夹 */
+function moveSiteToFolder(siteId, folderId) {
+  const site = state.data.sites.find(x => x.id === siteId);
+  const folder = state.data.sites.find(x => x.id === folderId);
+  if (!site || !folder) return;
+  site.parent = folderId;
+  persist();
+  renderGrid();
+  toast(`已移入「${folder.name}」`);
 }
 
 function addCardEl() {
@@ -705,14 +754,15 @@ function renderGrid() {
   const grid = $('#grid'), dots = $('#dots');
   computeLayout();
   const pp = perPage();
-  const total = state.data.sites.length + (state.editMode ? 1 : 0);
+  const entries = state.data.sites.filter(x => !x.parent);
+  const total = entries.length + (state.editMode ? 2 : 0);
   state.pages = Math.max(1, Math.ceil(total / pp));
   state.page = Math.min(state.page, state.pages - 1);
 
   // 第 0 页前 3 格固定为小组件（待办/笔记/天气），其余页放站点
   const start = state.page * pp;
   const count = pp;
-  const slice = state.data.sites.slice(start, start + count);
+  const slice = entries.slice(start, start + count);
   grid.style.setProperty('--cols', state.layout.cols);
   grid.style.setProperty('--card', state.layout.card + 'px');
   grid.classList.toggle('editing', state.editMode);
@@ -722,7 +772,7 @@ function renderGrid() {
     grid.innerHTML = '<p class="empty-tip">这里空空如也，点击右上角菜单 → 「添加网址」开始使用</p>';
   } else {
     slice.forEach((s, i) => grid.append(cardEl(s, i)));
-    if (state.editMode && state.page === 0) grid.append(addCardEl());
+    if (state.editMode && state.page === 0) { grid.append(addCardEl()); grid.append(addFolderEl()); }
   }
 
   dots.innerHTML = '';
@@ -786,20 +836,77 @@ function moveToPage(id, pageIndex) {
   renderGrid();
 }
 
-function removeSite(site) {
-  state.data.sites = state.data.sites.filter(s => s.id !== site.id);
+function removeSite(entry) {
+  if (entry.folder) {
+    // 解散文件夹：子站点回到桌面，不删除
+    state.data.sites.forEach(x => { if (x.parent === entry.id) delete x.parent; });
+    state.data.sites = state.data.sites.filter(x => x.id !== entry.id);
+    if (state.openFolderId === entry.id) closeFolder();
+    persist();
+    renderGrid();
+    toast(`已解散文件夹「${entry.name}」，网址回到桌面`);
+    return;
+  }
+  state.data.sites = state.data.sites.filter(s => s.id !== entry.id);
   persist();
   renderGrid();
-  toast(`已删除「${site.name}」`);
+  if (state.openFolderId) renderFolderView();
+  toast(`已删除「${entry.name}」`);
+}
+
+/* ================= 文件夹浮层（对齐 iOS 点开文件夹） ================= */
+function openFolder(folder) {
+  state.openFolderId = folder.id;
+  renderFolderView();
+  $('#folderMask').hidden = false;
+  $('#folderView').hidden = false;
+}
+
+function closeFolder() {
+  state.openFolderId = null;
+  $('#folderMask').hidden = true;
+  $('#folderView').hidden = true;
+}
+
+function renderFolderView() {
+  const f = state.data.sites.find(x => x.id === state.openFolderId);
+  if (!f || !f.folder) { closeFolder(); return; }
+  $('#fvTitle').textContent = f.name;
+  const kids = state.data.sites.filter(x => x.parent === f.id);
+  const box = $('#fvGrid');
+  box.innerHTML = '';
+  kids.forEach(k => {
+    const a = document.createElement('a');
+    a.className = 'fv-item';
+    a.href = k.url;
+    a.target = state.data.settings.openSitesNewTab ? '_blank' : '_self';
+    if (a.target === '_blank') a.rel = 'noopener';
+    a.innerHTML = `<span class="icon">${iconHTML(k)}${state.editMode ? `<button class="del" title="删除">${SVG_X}</button>` : ''}</span><span class="label">${escapeHtml(k.name)}</span>`;
+    a.addEventListener('click', e => { if (state.editMode) { e.preventDefault(); openSiteDialog(k); } });
+    const del = $('.del', a);
+    if (del) del.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); removeSite(k); });
+    box.append(a);
+  });
+  const add = document.createElement('a');
+  add.className = 'fv-item fv-add';
+  add.innerHTML = `<span class="icon">${SVG_PLUS}</span><span class="label">添加</span>`;
+  add.addEventListener('click', e => { e.preventDefault(); openSiteDialog(null, { parent: f.id }); });
+  box.append(add);
+  hydrateIdbIcons(box);
 }
 
 /* ================= 编辑图标侧边面板（对齐 inftab） ================= */
-function openSiteDialog(site) {
+function openSiteDialog(site, opts = {}) {
+  const folder = site ? !!site.folder : !!opts.folder;
   state.editingId = site ? site.id : null;
-  $('#editDlgTitle').textContent = site ? '编辑图标' : '添加图标';
-  $('#editUrl').value = site ? site.url : '';
+  state.editingFolder = folder;
+  state.editingParent = !site && !folder && opts.parent ? opts.parent : '';
+  $('#editDlgTitle').textContent = folder ? (site ? '编辑文件夹' : '新建文件夹') : (site ? '编辑图标' : '添加图标');
+  $('#editUrl').value = site && site.url ? site.url : '';
   $('#editName').value = site ? site.name : '';
   $('#editFormError').hidden = true;
+  $('#editUrlField').hidden = folder;
+  $('#editPickField').hidden = folder;
   if (site && site.icon && site.icon.startsWith('idb:')) Object.assign(editIcon, { mode: 'idb', url: '', idbKey: site.icon.slice(4) });
   else if (site && site.icon) Object.assign(editIcon, { mode: 'url', url: site.icon, idbKey: '' });
   else Object.assign(editIcon, { mode: 'auto', url: '', idbKey: '' });
@@ -812,6 +919,8 @@ function openSiteDialog(site) {
 function closeSiteDialog() {
   $('#editMask').hidden = true;
   $('#editPanel').hidden = true;
+  state.editingFolder = false;
+  state.editingParent = '';
 }
 
 // 面板打开期间的图标选择状态：auto=自动获取 / avatar=纯色图标 / url=候选图标 / idb=本地上传
@@ -875,8 +984,22 @@ function renderIconPick() {
 
 function saveSiteDialog() {
   const name = $('#editName').value.trim();
-  const url = normalizeUrl($('#editUrl').value);
   const err = $('#editFormError');
+  if (state.editingFolder) {
+    if (!name) { err.textContent = '请填写文件夹名称'; err.hidden = false; return; }
+    if (state.editingId) {
+      const f = pickSite();
+      if (f) f.name = name;
+    } else {
+      state.data.sites.push({ id: uid(), name, folder: true });
+    }
+    persist();
+    closeSiteDialog();
+    renderGrid();
+    toast('已保存');
+    return;
+  }
+  const url = normalizeUrl($('#editUrl').value);
   if (!name || !url) {
     err.textContent = !name ? '请填写名称' : '请填写有效的网址';
     err.hidden = false;
@@ -888,11 +1011,12 @@ function saveSiteDialog() {
     const site = pickSite();
     if (site) Object.assign(site, { name, url, icon, avatar });
   } else {
-    state.data.sites.push({ id: uid(), name, url, icon, avatar, badge: false });
+    state.data.sites.push({ id: uid(), name, url, icon, avatar, badge: false, parent: state.editingParent || '' });
   }
   persist();
   closeSiteDialog();
   renderGrid();
+  if (state.openFolderId) renderFolderView();
   toast('已保存');
 }
 
@@ -1262,11 +1386,11 @@ function bindTopMenu() {
     if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
     if (!$('#wallMenu').hidden && !$('#wallMenu').contains(e.target)) $('#wallMenu').hidden = true;
     // 对齐 inftab：编辑状态下点击其他地方（非图标/面板/控件）即退出编辑
-    if (state.editMode && !e.target.closest('.card, .edit-panel, #dirMask, #sidePanel, dialog, .dots, .round-btn, #btnMenu, .iconfind-mask')) setEditMode(false);
+    if (state.editMode && !e.target.closest('.card, .edit-panel, #dirMask, #sidePanel, dialog, .dots, .round-btn, #btnMenu, .iconfind-mask, #folderView')) setEditMode(false);
   });
   // 对齐 inftab：右键空白处弹出壁纸菜单（图标上的右键在 cardEl 内处理）
   document.addEventListener('contextmenu', e => {
-    if (e.target.closest('.card, .edit-panel, #sidePanel, dialog, input, textarea, select, .engine-menu, .sug-drop, .dir-card')) return;
+    if (e.target.closest('.card, .edit-panel, #sidePanel, #folderView, dialog, input, textarea, select, .engine-menu, .sug-drop, .dir-card')) return;
     e.preventDefault();
     if (state.editMode) return;
     openWallMenu(e);
@@ -1652,10 +1776,7 @@ function restoreBackup(i) {
   const keepSync = state.data.settings.sync;
   state.data = {
     version: 1,
-    sites: (b.payload.sites || []).map(s => ({
-      id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
-      icon: s.icon || '', avatar: !!s.avatar, badge: !!s.badge,
-    })),
+    sites: (b.payload.sites || []).map(normalizeSite),
     settings: { ...normalizeSettings(b.payload.settings || {}), sync: keepSync },
   };
   state.page = 0;
@@ -1714,10 +1835,7 @@ function bindImport() {
         const keepSync = state.data.settings.sync;
         state.data = {
           version: 1,
-          sites: payload.sites.map(s => ({
-            id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
-            icon: s.icon || '', avatar: !!s.avatar, badge: !!s.badge,
-          })),
+          sites: payload.sites.map(normalizeSite),
           settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync },
         };
         state.page = 0;
@@ -1804,7 +1922,7 @@ function bindEvents() {
 
   // 键盘
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleEngineMenu(false); hideSug(); closePanel(); closeSiteDialog(); closeIconFind(); $('#wallMenu').hidden = true; }
+    if (e.key === 'Escape') { toggleEngineMenu(false); hideSug(); closePanel(); closeSiteDialog(); closeIconFind(); closeFolder(); $('#wallMenu').hidden = true; }
     const tag = document.activeElement.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k' && !typing)) {
@@ -1831,6 +1949,11 @@ function bindEvents() {
   });
   $('#iconFind').addEventListener('click', e => { if (e.target === e.currentTarget) closeIconFind(); });
 
+  // 文件夹浮层
+  $('#fvClose').addEventListener('click', closeFolder);
+  $('#folderMask').addEventListener('click', closeFolder);
+  $('#fvGrid').addEventListener('error', e => { if (e.target.tagName === 'IMG') advanceIcon(e.target); }, true);
+
   // 滚轮翻页：整页任意位置生效（翻页后网格高度会变化，仅监听网格会导致"滚不回来"）；
   // 兼容 Firefox 的行滚动模式（deltaMode=1 时 deltaY 按行计）
   let wheelAt = 0;
@@ -1838,7 +1961,7 @@ function bindEvents() {
     const now = Date.now();
     if (now - wheelAt < 450 || Math.abs(e.deltaY) < 20) return;
     const t = e.target instanceof Element ? e.target : null;
-    if (t && t.closest('#sidePanel, dialog, .edit-panel, .engine-menu, .sug-drop, .iconfind-mask, input, textarea, select')) return;
+    if (t && t.closest('#sidePanel, dialog, .edit-panel, .folder-view, .engine-menu, .sug-drop, .iconfind-mask, input, textarea, select')) return;
     const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
     if (dy > 0) { if (state.page < state.pages - 1) { flipPage(1); wheelAt = now; } }
     else if (dy < 0 && state.page > 0) { flipPage(-1); wheelAt = now; }

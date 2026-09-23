@@ -6,7 +6,7 @@
   <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
   <title>Nav · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260927b">
+  <link rel="stylesheet" href="css/style.css?v=20260927d">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -41,19 +41,29 @@
   </main>
 
 
+  <!-- 文件夹浮层（点开桌面文件夹） -->
+  <div class="folder-mask" id="folderMask" hidden></div>
+  <div class="folder-view" id="folderView" hidden>
+    <div class="fv-head">
+      <h3 id="fvTitle">文件夹</h3>
+      <button type="button" class="dlg-close" id="fvClose" title="关闭">&times;</button>
+    </div>
+    <div class="fv-grid" id="fvGrid"></div>
+  </div>
+
   <!-- 编辑图标侧边面板（对齐 inftab：右键图标进入编辑，点图标弹出） -->
   <div class="edit-mask" id="editMask" hidden></div>
   <aside class="edit-panel" id="editPanel" hidden>
     <button type="button" class="edit-close" id="editPanelClose" title="关闭">&times;</button>
     <h3 id="editDlgTitle">编辑图标</h3>
     <div class="edit-card">
-      <label class="edit-field">网站地址
+      <label class="edit-field" id="editUrlField">网站地址
         <input id="editUrl" placeholder="https://www.example.com">
       </label>
       <label class="edit-field">网站名称
         <input id="editName" maxlength="24" placeholder="如：百度">
       </label>
-      <div class="edit-field">选择图标
+      <div class="edit-field" id="editPickField">选择图标
         <div class="icon-pick" id="iconPick"></div>
         <input type="file" id="iconFile" accept="image/*" hidden>
       </div>
@@ -377,6 +387,6 @@
   <div class="toasts" id="toasts"></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js?v=20260927b"></script>
+  <script type="module" src="js/app.js?v=20260927d"></script>
 </body>
 </html>
