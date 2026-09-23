@@ -1454,8 +1454,16 @@ function renderTypeTabs() {
 
 function updateSearchUI() {
   const eng = resolveEngine();
-  // 与引擎菜单一致：favicon 覆盖字母色块，真实图标优先
-  $('#engineLogo').innerHTML = engineGlyphHTML(eng);
+  // 胶囊容器随图标比例自适应（横向字标不压扁）；字母为加载失败时的兜底
+  const glyph = eng.glyph || (eng.name || '?')[0];
+  let host = '';
+  try { host = new URL(eng.urls.html).host; } catch { host = ''; }
+  const sources = host ? [
+    `https://${host}/favicon.ico`,
+    `https://favicon.im/${host}?larger=true`,
+  ].map(u => escapeHtml(u)).join('|') : '';
+  const img = sources ? `<img class="eng-logo-img" src="${sources.split('|')[0]}" data-sources="${sources}" alt="">` : '';
+  $('#engineLogo').innerHTML = `<span class="eng-logo-fb" style="background:${eng.color || tint(eng.name)}">${escapeHtml(glyph)}</span>${img}`;
 }
 
 /* ---------- 引擎选择弹层（Logo 下拉，对齐 inftab：全部引擎 + 添加） ---------- */
@@ -2137,6 +2145,9 @@ function bindEvents() {
     if (e.target.tagName === 'IMG') advanceIcon(e.target);
   }, true);
   $('#engineMenu').addEventListener('error', e => {
+    if (e.target.tagName === 'IMG') advanceIcon(e.target);
+  }, true);
+  $('#engineLogo').addEventListener('error', e => {
     if (e.target.tagName === 'IMG') advanceIcon(e.target);
   }, true);
 
