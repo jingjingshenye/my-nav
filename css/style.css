@@ -1129,8 +1129,10 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .folder-tile .mini {
   position: relative; border-radius: 22%; overflow: hidden;
   background: rgba(255, 255, 255, .85);
+  display: grid; place-items: center;
 }
-.folder-tile .mini img, .folder-tile .mini .ph { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 字母头像垫底、真实图标叠放其上（此前 img 被排到不透明头像下方且被裁掉，永远只显示字母） */
+.folder-tile .mini img, .folder-tile .mini .ph { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: cover; display: block; }
 .folder-empty { width: 100%; height: 100%; display: grid; place-items: center; color: #fff; background: rgba(255,255,255,.28); border-radius: inherit; }
 .folder-empty svg { width: 46%; height: 46%; }
 .folder-count {
