@@ -7,7 +7,8 @@ const uid = () => 's_' + Date.now().toString(36) + Math.random().toString(36).sl
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SVG_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-const SVG_X = '✕';
+const SVG_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+const SVG_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
 
 function tint(name) {
   const palette = ['#f2708a', '#5aa9e6', '#7fc8a9', '#e6a157', '#9b8ce0', '#59c3c3'];
@@ -646,7 +647,7 @@ function cardEl(site, idx = 0) {
   const labelColor = fc === 'rainbow' ? tint(site.name) : (fc || '#ffffff');
   a.innerHTML = `
     <span class="icon">${iconHTML(site)}${site.badge ? '<i class="badge"></i>' : ''}
-      ${state.editMode ? `<button class="del" title="删除">${SVG_X}</button>` : ''}
+      ${state.editMode ? `<button class="edit-go" title="编辑">${SVG_PENCIL}</button><button class="del" title="删除">${SVG_X}</button>` : ''}
     </span>
     <span class="label" style="color:${labelColor}">${escapeHtml(site.name)}</span>`;
 
@@ -685,6 +686,8 @@ function cardEl(site, idx = 0) {
     if (!state.editMode) setEditMode(true);
     else openSiteDialog(site);
   });
+  const editGo = $('.edit-go', a);
+  if (editGo) editGo.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openSiteDialog(site); });
   const del = $('.del', a);
   if (del) del.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); removeSite(site); });
   return a;

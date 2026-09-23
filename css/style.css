@@ -299,26 +299,38 @@ body {
 .card.draggable { cursor: grab; }
 .card.dragging { opacity: .45; }
 .card.drop-target .icon { outline: 2px dashed #fff; outline-offset: 3px; }
-.editing .card .icon { animation: wiggle 1.8s ease-in-out infinite; }
-.editing .card:nth-child(2n) .icon { animation-delay: .2s; }
-.editing .card:nth-child(3n) .icon { animation-delay: .45s; }
+.editing .card .icon { animation: wiggle .32s ease-in-out infinite; }
+.editing .card:nth-child(2n) .icon { animation-direction: reverse; animation-delay: -.16s; }
+.editing .card:nth-child(3n) .icon { animation-delay: -.08s; }
 @keyframes wiggle {
-  0%, 100% { transform: rotate(0); }
-  25% { transform: rotate(-2deg); }
-  75% { transform: rotate(2deg); }
+  0%, 100% { transform: rotate(-2.4deg) translate(-.5px, 0); }
+  50% { transform: rotate(2.4deg) translate(.5px, 0); }
 }
+/* 编辑态中央按钮（对齐 inftab：铅笔 = 编辑） */
+.editing .card .edit-go {
+  display: grid; place-items: center;
+  position: absolute; inset: 0; margin: auto;
+  width: 38%; height: 38%;
+  border: none; border-radius: 26%;
+  background: rgba(255, 255, 255, .88);
+  color: #444; cursor: pointer; z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .22);
+}
+.editing .card .edit-go svg { width: 58%; height: 58%; }
+.editing .card .edit-go:hover { background: #fff; transform: scale(1.06); }
 @media (prefers-reduced-motion: reduce) {
   .editing .card .icon { animation: none; }
 }
 .card .del {
   display: none;
-  position: absolute; top: -6px; right: -6px;
-  width: 20px; height: 20px; border: none; border-radius: 50%;
+  position: absolute; top: -7px; right: -7px;
+  width: 23px; height: 23px; border: none; border-radius: 50%;
   background: #ff4d4f; color: #fff; cursor: pointer;
-  font-size: 13px; line-height: 1;
-  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+  padding: 5px;
 }
 .editing .card .del { display: grid; place-items: center; }
+.card .del svg { width: 100%; height: 100%; }
 
 /* ---------- 翻页圆点 ---------- */
 .dots {
