@@ -20,7 +20,7 @@ body {
   overflow: hidden;
   font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
   color: #fff;
-  background: #9db2a2;
+  background: #22262b;
 }
 
 /* ---------- 壁纸 ---------- */
@@ -244,7 +244,7 @@ body {
   position: relative;
   width: calc(var(--card, 98px) * 0.66 * var(--icon-scale-factor, 1));
   height: calc(var(--card, 98px) * 0.66 * var(--icon-scale-factor, 1));
-  border-radius: calc(var(--icon-radius-pct, 50) * 0.5 * 1%);
+  border-radius: calc(var(--icon-radius-pct, 50) * 1%);
   background: rgba(255,255,255,var(--icon-opacity, 1));
   box-shadow: 0 4px 16px rgba(0,0,0,.20);
   display: grid; place-items: center;
@@ -318,7 +318,12 @@ body {
 .editing .card .del { display: grid; place-items: center; }
 
 /* ---------- 翻页圆点 ---------- */
-.dots { display: flex; gap: 10px; margin-top: 34px; }
+.dots {
+  position: fixed; bottom: 8vh; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 10px; margin: 0;
+  z-index: 30;
+}
 .dot {
   width: 8px; height: 8px; border-radius: 50%; border: none;
   background: rgba(255,255,255,.42); cursor: pointer; padding: 0;
@@ -629,6 +634,7 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .ctx-menu button.danger { color: var(--bad); }
 
 .engine-menu { padding: 12px; }
+.engine-menu .eng-pick + .eng-pick { border-left: 1px solid var(--line); }
 .engine-menu .eng-pick .eng-name { color: #444; }
 .engine-menu .eng-pick:hover { background: var(--glass-2); }
 .engine-menu .eng-pick:hover .eng-name { color: var(--tx); }
