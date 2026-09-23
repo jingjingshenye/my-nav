@@ -6,7 +6,7 @@
   <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
   <title>Nav · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260927f">
+  <link rel="stylesheet" href="css/style.css?v=20260928f">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -34,7 +34,7 @@
 
     <section class="grid-area" id="gridArea">
       <div class="grid-arrow prev" id="gridPrev" hidden>‹</div>
-      <div class="grid" id="grid"></div>
+      <div class="grid-pages" id="gridPages"></div>
       <div class="grid-arrow next" id="gridNext" hidden>›</div>
     </section>
     <div class="dots" id="dots"></div>
@@ -391,6 +391,7 @@
   <div class="toasts" id="toasts"></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js?v=20260927f"></script>
+  <script src="js/vendor/sortable.min.js"></script>
+  <script type="module" src="js/app.js?v=20260928f"></script>
 </body>
 </html>

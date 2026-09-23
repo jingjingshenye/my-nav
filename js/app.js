@@ -55,6 +55,7 @@ const I18N = {
     '已收藏当前壁纸': '已收藏目前桌布', '当前是内置壁纸，应用网络壁纸后可收藏': '目前是內建桌布，套用網路桌布後可收藏',
     '已创建本地备份节点': '已建立本機備份節點', '已创建备份节点': '已建立備份節點',
     '第 {n} 页': '第 {n} 頁', '已添加「{n}」': '已新增「{n}」',
+    '新建页': '新增頁面', '已新增一页': '已新增一頁', '已移到最后': '已移到最後',
     '已移除「{n}」（引擎库中可随时重新启用）': '已移除「{n}」（引擎庫中可隨時重新啟用）',
     '移除搜索引擎「{n}」？': '移除搜尋引擎「{n}」？', '引擎库中的引擎已全部启用': '引擎庫中的引擎已全部啟用',
     '至少保留一个搜索引擎': '至少保留一個搜尋引擎', '已导入 {n} 个网址': '已匯入 {n} 個網址',
@@ -114,6 +115,7 @@ const I18N = {
     '已收藏当前壁纸': 'Wallpaper saved to favorites', '当前是内置壁纸，应用网络壁纸后可收藏': 'Built-in wallpaper. Apply a web wallpaper first',
     '已创建本地备份节点': 'Local backup snapshot created', '已创建备份节点': 'Backup snapshot created',
     '第 {n} 页': 'Page {n}', '已添加「{n}」': 'Added "{n}"',
+    '新建页': 'New page', '已新增一页': 'New page added', '已移到最后': 'Moved to the end',
     '已移除「{n}」（引擎库中可随时重新启用）': 'Removed "{n}" (can be re-enabled from the catalog)',
     '移除搜索引擎「{n}」？': 'Remove search engine "{n}"?', '引擎库中的引擎已全部启用': 'All catalog engines are enabled',
     '至少保留一个搜索引擎': 'Keep at least one search engine', '已导入 {n} 个网址': 'Imported {n} sites',
@@ -145,11 +147,11 @@ function t(s) {
 const i18nNodeKeys = new WeakMap();
 function applyI18n() {
   const lang = state.data && state.data.settings ? state.data.settings.lang : 'zh';
-  const d = I18N[lang];
+  const d = I18N[lang] || null;
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const el = node.parentElement;
-      if (!el || el.closest('#grid .label, #fvGrid .label, .dir-info, script, style, textarea')) return NodeFilter.FILTER_REJECT;
+      if (!el || el.closest('#gridPages .label, #fvGrid .label, .dir-info, script, style, textarea')) return NodeFilter.FILTER_REJECT;
       return NodeFilter.FILTER_ACCEPT;
     }
   });
@@ -165,6 +167,7 @@ function applyI18n() {
     node.textContent = (d && Object.prototype.hasOwnProperty.call(d, key)) ? d[key] : key;
   });
   $$('#searchInput[placeholder], #dirSearch[placeholder]').forEach(el => {
+    if (!d) return;
     const k = el.getAttribute('placeholder');
     if (k && Object.prototype.hasOwnProperty.call(d, k)) el.placeholder = d[k];
   });
@@ -441,6 +444,11 @@ const state = {
   editingFolder: false, // 编辑面板当前操作的是文件夹
   editingParent: '', // 新建网址的目标文件夹 id（空 = 桌面）
   openFolderId: null, // 当前打开的文件夹 id
+  dragging: false, // Sortable 拖拽进行中
+  dragId: null, // 拖拽中的条目 id
+  dropFolderId: null, // 拖拽悬停的文件夹 id
+  pendingNewPage: false, // 拖到「＋ 新建页」上的标记
+  extraPages: 0, // 编辑态手动新增的空页数（退出编辑自动回收）
   layout: { cols: 6, rows: 3, card: 98 },
 };
 
@@ -702,7 +710,7 @@ function closeIconFind() {
 
 function filterCards(q) {
   q = q.trim().toLowerCase();
-  $$('#grid .card').forEach(c => c.classList.toggle('find-hide', !!q && !c.textContent.toLowerCase().includes(q)));
+  $$('#gridPages .card').forEach(c => c.classList.toggle('find-hide', !!q && !c.textContent.toLowerCase().includes(q)));
 }
 
 function openGallery() {
@@ -827,37 +835,9 @@ function cardEl(entry, idx = 0) {
     <span class="label" style="color:${labelColor}">${escapeHtml(entry.name)}</span>`;
 
   if (state.editMode) {
-    a.classList.add('draggable');
-    a.draggable = true;
     a.addEventListener('click', e => {
       e.preventDefault();
       if (entry.folder) openFolder(entry); else openSiteDialog(entry);
-    });
-    a.addEventListener('dragstart', e => {
-      state.dragId = entry.id;
-      a.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      try { e.dataTransfer.setData('text/plain', entry.id); } catch { /* ignore */ }
-    });
-    a.addEventListener('dragend', () => {
-      state.dragId = null;
-      a.classList.remove('dragging');
-      $$('.drop-target').forEach(x => x.classList.remove('drop-target'));
-    });
-    a.addEventListener('dragover', e => {
-      if (!state.dragId || state.dragId === entry.id) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      a.classList.add('drop-target');
-    });
-    a.addEventListener('dragleave', () => a.classList.remove('drop-target'));
-    a.addEventListener('drop', e => {
-      e.preventDefault();
-      a.classList.remove('drop-target');
-      const dragged = state.data.sites.find(x => x.id === state.dragId);
-      if (entry.folder && dragged && !dragged.folder && dragged.id !== entry.id) { moveSiteToFolder(dragged.id, entry.id); return; }
-      if (dragged && dragged.parent) return; // 文件夹内的站点不参与桌面排序
-      reorder(state.dragId, entry.id);
     });
   } else if (entry.folder) {
     a.addEventListener('click', e => { e.preventDefault(); openFolder(entry); });
@@ -912,51 +892,131 @@ function addCardEl() {
 }
 
 function renderGrid() {
-  const grid = $('#grid'), dots = $('#dots');
+  const pagesBox = $('#gridPages'), dots = $('#dots');
   computeLayout();
-  const pp = perPage();
   const entries = state.data.sites.filter(x => !x.parent);
-  const total = entries.length + (state.editMode ? 2 : 0);
-  state.pages = Math.max(1, Math.ceil(total / pp));
-  state.page = Math.min(state.page, state.pages - 1);
+  const pp = perPage();
+  const need = Math.max(1, Math.ceil(entries.length / pp));
+  const pageCount = Math.max(1, need + (state.editMode ? state.extraPages : 0));
+  state.pages = pageCount;
+  state.page = Math.max(0, Math.min(state.page, pageCount - 1));
 
-  // 第 0 页前 3 格固定为小组件（待办/笔记/天气），其余页放站点
-  const start = state.page * pp;
-  const count = pp;
-  const slice = entries.slice(start, start + count);
-  grid.style.setProperty('--cols', state.layout.cols);
-  grid.style.setProperty('--card', state.layout.card + 'px');
-  grid.classList.toggle('editing', state.editMode);
-  grid.classList.toggle('hide-labels', !!state.data.settings.hideIconName);
-  grid.innerHTML = '';
-  if (!slice.length && state.page === 0 && !state.editMode) {
-    grid.innerHTML = '<p class="empty-tip">' + t('这里空空如也，点击右上角菜单 → 「添加网址」开始使用') + '</p>';
-  } else {
-    slice.forEach((s, i) => grid.append(cardEl(s, i)));
-    if (state.editMode && state.page === 0) { grid.append(addCardEl()); grid.append(addFolderEl()); }
+  pagesBox.innerHTML = '';
+  for (let p = 0; p < pageCount; p++) {
+    const pg = document.createElement('div');
+    pg.className = 'grid-page' + (p === state.page ? '' : ' off');
+    pg.dataset.page = p;
+    const slice = entries.slice(p * pp, p * pp + pp);
+    if (slice.length) {
+      slice.forEach((en, i) => pg.append(cardEl(en, i)));
+    } else if (p === 0 && !state.editMode) {
+      pg.innerHTML = '<p class="empty-tip">' + t('这里空空如也，点击右上角菜单 → 「添加网址」开始使用') + '</p>';
+    }
+    if (p === 0 && state.editMode) { pg.append(addCardEl()); pg.append(addFolderEl()); }
+    pagesBox.append(pg);
   }
 
   dots.innerHTML = '';
-  for (let i = 0; i < state.pages; i++) {
+  for (let p = 0; p < pageCount; p++) {
     const d = document.createElement('button');
     d.type = 'button';
-    d.className = 'dot' + (i === state.page ? ' active' : '');
-    d.title = t('第 {n} 页', i + 1);
-    d.addEventListener('click', () => { state.page = i; renderGrid(); });
-    if (state.editMode) {
-      d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('active'); });
-      d.addEventListener('dragleave', () => d.classList.toggle('active', i === state.page));
-      d.addEventListener('drop', e => { e.preventDefault(); moveToPage(state.dragId, i); });
-    }
+    d.className = 'dot' + (p === state.page ? ' active' : '');
+    d.title = t('第 {n} 页', p + 1);
+    d.addEventListener('click', () => showPage(p));
     dots.append(d);
   }
+  if (state.editMode) {
+    const np = document.createElement('button');
+    np.type = 'button';
+    np.className = 'dot dot-new';
+    np.title = t('新建页');
+    np.textContent = '＋';
+    np.addEventListener('click', () => {
+      state.extraPages = Math.min(3, state.extraPages + 1);
+      renderGrid();
+    });
+    np.addEventListener('dragover', e => { e.preventDefault(); np.classList.add('drop-target'); });
+    np.addEventListener('dragleave', () => np.classList.remove('drop-target'));
+    np.addEventListener('drop', e => {
+      e.preventDefault();
+      np.classList.remove('drop-target');
+      state.pendingNewPage = true;
+      toast(t('已新增一页'));
+    });
+    dots.append(np);
+  }
 
-  // 翻页箭头
+  pagesBox.classList.toggle('editing', state.editMode);
   $('#gridPrev').hidden = state.page <= 0;
-  $('#gridNext').hidden = state.page >= state.pages - 1;
-
-  hydrateIdbIcons(grid);
+  $('#gridNext').hidden = state.page >= pageCount - 1;
+  showPage(state.page);
+  bindSortables();
+  hydrateIdbIcons(pagesBox);
   applyI18n();
+}
+
+/** 显示某一页：仅切换可见性，不重建 DOM——拖拽进行中也不会中断 */
+function showPage(p) {
+  state.page = p;
+  const pages = $$('#gridPages .grid-page');
+  pages.forEach((pg, i) => {
+    pg.classList.toggle('off', i !== p);
+    if (i === p) $('#gridPages').style.height = pg.offsetHeight + 'px';
+  });
+  $$('#dots .dot').forEach((d, i) => d.classList.toggle('active', i === p));
+  $('#gridPrev').hidden = p <= 0;
+  $('#gridNext').hidden = p >= pages.length - 1;
+}
+function flipPage(delta) {
+  const next = Math.max(0, Math.min($$('#gridPages .grid-page').length - 1, state.page + delta));
+  if (next !== state.page) showPage(next);
+}
+
+/** 把 DOM 中的顶层顺序读回数据（文件夹子站点保持原相对顺序追加在后） */
+function syncOrderFromDOM() {
+  const ids = [];
+  $$('#gridPages .grid-page').forEach(pg => {
+    [...pg.children].forEach(el => { if (el.dataset && el.dataset.id) ids.push(el.dataset.id); });
+  });
+  const map = Object.fromEntries(state.data.sites.map(x => [x.id, x]));
+  const topLevel = ids.map(id => map[id]).filter(Boolean);
+  const children = state.data.sites.filter(x => x.parent);
+  state.data.sites = [...topLevel, ...children];
+}
+
+let sortableInstances = [];
+function bindSortables() {
+  sortableInstances.forEach(ins => ins.destroy());
+  sortableInstances = [];
+  if (typeof Sortable === 'undefined') return;
+  $$('#gridPages .grid-page').forEach(pg => {
+    const ins = new Sortable(pg, {
+      group: 'sites',
+      animation: 150,
+      disabled: !state.editMode,
+      draggable: '.card',
+      onStart: evt => {
+        state.dragging = true;
+        state.dragId = evt.item.dataset.id || null;
+      },
+      onEnd: evt => {
+        state.dragging = false;
+        const id = evt.item.dataset.id;
+        const dragged = state.data.sites.find(x => x.id === id);
+        if (state.dropFolderId && dragged && !dragged.folder && state.dropFolderId !== id) {
+          const target = state.dropFolderId;
+          state.dropFolderId = null;
+          moveSiteToFolder(id, target);
+          return;
+        }
+        state.dropFolderId = null;
+        syncOrderFromDOM();
+        persist();
+        renderGrid();
+      },
+    });
+    sortableInstances.push(ins);
+  });
 }
 
 function renderAll() {
@@ -976,25 +1036,24 @@ function normalizeUrl(u) {
   return /^https?:\/\//i.test(u) ? u : 'https://' + u;
 }
 
-function reorder(dragId, targetId) {
-  const sites = state.data.sites;
-  const from = sites.findIndex(s => s.id === dragId);
-  const to = sites.findIndex(s => s.id === targetId);
-  if (from < 0 || to < 0 || from === to) return;
-  const [moved] = sites.splice(from, 1);
-  sites.splice(sites.findIndex(s => s.id === targetId), 0, moved);
-  persist();
-  renderGrid();
-}
-
-function moveToPage(id, pageIndex) {
-  const sites = state.data.sites;
-  const i = sites.findIndex(s => s.id === id);
-  if (i < 0) return;
-  const [moved] = sites.splice(i, 1);
-  const idx = Math.max(0, Math.min(pageIndex * perPage() + perPage() - 1, sites.length));
-  sites.splice(idx, 0, moved);
-  state.page = pageIndex;
+/** 把条目移动到顶层第 targetIdx 个位置（targetIdx 超出总数 = 追加到末尾，可因此新建页） */
+function moveEntryToIndex(dragId, targetIdx) {
+  const arr = state.data.sites;
+  const from = arr.findIndex(x => x.id === dragId);
+  if (from < 0) return;
+  const [moved] = arr.splice(from, 1);
+  if (!isFinite(targetIdx)) targetIdx = arr.length;
+  let seen = 0, insertAt = arr.length;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i].parent) continue;
+    if (seen >= targetIdx) { insertAt = i; break; }
+    seen++;
+    insertAt = i + 1;
+  }
+  arr.splice(insertAt, 0, moved);
+  const topCount = arr.filter(x => !x.parent).length;
+  const pagesNow = Math.max(1, Math.ceil(topCount / perPage()));
+  state.page = Math.max(0, Math.min(pagesNow - 1, Math.floor(Math.min(targetIdx, topCount - 1) / perPage())));
   persist();
   renderGrid();
 }
@@ -1224,7 +1283,7 @@ function applyAppearance() {
   wp.style.filter = s.wallBlur > 0 ? 'blur(' + s.wallBlur + 'px)' : '';
   wp.style.transform = s.wallBlur > 0 ? 'scale(' + (1 + s.wallBlur / 150).toFixed(3) + ')' : '';
 
-  const grid = $('#grid');
+  const grid = $('#gridPages');
   grid.dataset.easing = s.animEasing;
   $('#searchBtn').hidden = s.searchHideBtn;
   grid.classList.toggle('hide-labels', !!s.hideIconName);
@@ -1535,22 +1594,18 @@ function toast(msg, type = 'info', ms = 2600) {
 }
 
 /* ================= 翻页 ================= */
-function flipPage(delta) {
-  const next = state.page + delta;
-  if (next < 0 || next >= state.pages) return;
-  state.page = next;
-  renderGrid();
-}
 
 /* ================= 顶部按钮事件（汉堡直接弹出设置抽屉，对齐 inftab） ================= */
 function bindTopMenu() {
   $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); openPanel('add'); });
 
   document.addEventListener('click', e => {
+    // 捕获阶段判断（此时目标尚未被重建的 DOM 摘除）：编辑态点空白处即退出
+    if (state.editMode && !e.target.closest('.card, .edit-panel, #dirMask, #sidePanel, dialog, .dots, .round-btn, #btnMenu, .iconfind-mask, #folderView')) setEditMode(false);
+  }, true);
+  document.addEventListener('click', e => {
     if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
     if (!$('#wallMenu').hidden && !$('#wallMenu').contains(e.target)) $('#wallMenu').hidden = true;
-    // 对齐 inftab：编辑状态下点击其他地方（非图标/面板/控件）即退出编辑
-    if (state.editMode && !e.target.closest('.card, .edit-panel, #dirMask, #sidePanel, dialog, .dots, .round-btn, #btnMenu, .iconfind-mask, #folderView')) setEditMode(false);
   });
   // 对齐 inftab：右键空白处弹出壁纸菜单（图标上的右键在 cardEl 内处理）
   document.addEventListener('contextmenu', e => {
@@ -1600,6 +1655,7 @@ function closePanel() {
 function setEditMode(on) {
   if (state.editMode === on) return;
   state.editMode = on;
+  if (!on) state.extraPages = 0; // 退出编辑：手动新增的空页自动回收（对齐 iOS）
   const b = $('#actEdit');
   b.classList.toggle('on', on);
   b.textContent = on ? '退出编辑' : '编辑模式';
@@ -2077,7 +2133,7 @@ function bindEvents() {
   applyWallpaperUpload();
 
   // 图标源失败时自动切换到下一个源，全部失败才显示字母头像（事件捕获处理 img error）
-  $('#grid').addEventListener('error', e => {
+  $('#gridPages').addEventListener('error', e => {
     if (e.target.tagName === 'IMG') advanceIcon(e.target);
   }, true);
   $('#dirList').addEventListener('error', e => {
@@ -2117,7 +2173,7 @@ function bindEvents() {
   $('#iconFindInput').addEventListener('input', e => filterCards(e.target.value));
   $('#iconFindInput').addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
-    const first = document.querySelector('#grid .card:not(.find-hide)');
+    const first = document.querySelector('#gridPages .card:not(.find-hide)');
     if (first) { closeIconFind(); first.click(); }
   });
   $('#iconFind').addEventListener('click', e => { if (e.target === e.currentTarget) closeIconFind(); });
@@ -2139,6 +2195,27 @@ function bindEvents() {
     if (dy > 0) { if (state.page < state.pages - 1) { flipPage(1); wheelAt = now; } }
     else if (dy < 0 && state.page > 0) { flipPage(-1); wheelAt = now; }
   }, { passive: true });
+
+  // 拖拽期间：悬停屏幕左右边缘自动翻页；悬停文件夹记录移入目标（Sortable 原生拖拽期间 dragover 持续触发）
+  let edgeTimer = null, edgeDir = 0;
+  const stopEdge = () => { if (edgeTimer) { clearInterval(edgeTimer); edgeTimer = null; } };
+  document.addEventListener('dragover', e => {
+    if (!state.dragging) { stopEdge(); state.dropFolderId = null; return; }
+    const fc = e.target.closest && e.target.closest('.folder-card');
+    state.dropFolderId = fc ? fc.dataset.id : null;
+    const E = 90;
+    const dir = e.clientX < E ? -1 : (e.clientX > innerWidth - E ? 1 : 0);
+    if (!dir) { stopEdge(); return; }
+    if (edgeTimer && edgeDir === dir) return;
+    stopEdge(); edgeDir = dir;
+    edgeTimer = setInterval(() => {
+      const next = state.page + edgeDir;
+      if (next < 0 || next > state.pages - 1) { stopEdge(); return; }
+      showPage(next);
+    }, 650);
+  });
+  document.addEventListener('drop', stopEdge);
+  document.addEventListener('dragend', stopEdge);
 
   // 翻页箭头
   $('#gridPrev').addEventListener('click', () => flipPage(-1));
@@ -2339,4 +2416,4 @@ async function init() {
   maybeAutoBingDaily().catch(() => {});
 }
 
-init().catch(err => toast(t('初始化失败：') + err.message, 'error'));
+init().catch(err => { window.__initErr = err.stack || String(err); toast(t('初始化失败：') + err.message, 'error'); });
