@@ -1014,7 +1014,8 @@ function showPage(p, dir) {
     }
   });
   state.page = p;
-  box.style.height = target.offsetHeight + 'px';
+  // 容器高度取所有页的最大值：横向切换时高度恒定，箭头/圆点不会随高度过渡上下浮动
+  box.style.height = (pages.length ? Math.max(...pages.map(pg => pg.offsetHeight)) : 0) + 'px';
   $$('#dots .dot').forEach((d, i) => d.classList.toggle('active', i === p));
 }
 /** 翻页（循环：末页向后翻回首页，首页向前翻到末页） */
