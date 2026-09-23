@@ -459,20 +459,33 @@ const state = {
 function computeLayout() {
   const s = state.data.settings.layout;
   const vw = innerWidth, vh = innerHeight;
-  let colsN, rowsN, card;
+  // 图标缩放系数（50%–120%，基准 71%）驱动卡片尺寸：图标始终占卡片 66%，不再溢出格子
+  const f = Math.max(0.5, Math.min(1.7, (state.data.settings.iconScale || 71) / 71));
+
+  let colsBase, rowsCap;
   if (s.mode === 'fixed') {
-    colsN = Math.min(s.col, Math.max(3, Math.floor((vw - 40) / 106)));
-    rowsN = s.row;
-    card = Math.max(88, Math.min(128, Math.floor(Math.min(vw * 0.94, 1720) / colsN) - 8));
+    colsBase = Math.max(1, s.col);
+    rowsCap = Math.max(1, s.row);
   } else {
-    const usableW = Math.min(vw * 0.94, 1760);
-    colsN = Math.max(4, Math.min(12, Math.floor(usableW / 148)));
-    card = Math.max(96, Math.min(150, Math.floor(usableW / colsN) - 8));
-    const areaTop = $('#gridArea').getBoundingClientRect().top;
-    const availH = Math.max(220, vh - areaTop - 96); // 预留翻页圆点与页脚
-    rowsN = Math.max(2, Math.min(6, Math.floor((availH - 16) / (card * 1.42))));
+    colsBase = Math.max(4, Math.min(12, Math.floor(Math.min(vw * 0.94, 1760) / 148)));
+    rowsCap = 6;
   }
-  state.layout = { cols: colsN, rows: rowsN, card };
+
+  // 基准卡宽沿用原逻辑，再乘缩放系数——容器宽度随之可调
+  let card = Math.max(88, Math.min(128, Math.floor(Math.min(vw * 0.94, 1720) / Math.max(3, colsBase)) - 8));
+  card = Math.max(64, Math.round(card * f));
+
+  // 硬上限：卡宽不超过可用宽度的 1/3；卡片连文字不超过可用高度的 1/2——网格最高不超整屏
+  const areaTop = $('#gridArea').getBoundingClientRect().top;
+  const availH = Math.max(220, vh - areaTop - 96); // 预留翻页圆点与页脚
+  card = Math.min(card, Math.floor(vw * 0.94 / 3), Math.floor(availH / 2));
+
+  // 列数/行数：优先尊重设置值，但以实际能放进屏幕为准
+  const colsFit = Math.max(2, Math.floor((vw * 0.94) / (card + 8)));
+  const cols = Math.max(2, Math.min(colsBase, colsFit));
+  const rowsFit = Math.max(1, Math.floor((availH - 16) / (card * 1.42)));
+  const rows = Math.max(1, Math.min(rowsCap, rowsFit));
+  state.layout = { cols, rows, card };
 }
 
 const perPage = () => state.layout.cols * state.layout.rows;
@@ -936,6 +949,8 @@ function renderGrid() {
     const pg = document.createElement('div');
     pg.className = 'grid-page' + (p === state.page ? '' : ' off');
     pg.dataset.page = p;
+    pg.style.setProperty('--cols', state.layout.cols);
+    pg.style.setProperty('--card', state.layout.card + 'px');
     const slice = pageSlices[p] || [];
     if (slice.length) {
       slice.forEach((en, i) => pg.append(cardEl(en, i)));
@@ -1383,10 +1398,9 @@ function applyAppearance() {
   root.setProperty('--search-alpha', (s.searchOpacity / 100).toFixed(2));
   root.setProperty('--label-size', s.fontSize + 'px');
   root.setProperty('--label-shadow', s.fontShadow ? '0 1px 5px rgba(0,0,0,.45)' : 'none');
-  root.setProperty('--icon-scale-factor', (s.iconScale / 71).toFixed(3));
+  // 图标缩放已由 computeLayout 通过卡片尺寸承担，不再单独缩放图标（避免双重缩放溢出格子）
   root.setProperty('--icon-radius-pct', s.iconRadius);
   root.setProperty('--icon-opacity', (s.iconOpacity / 100).toFixed(2));
-  $('.stage').style.zoom = s.pageScale / 100;
   // 遮罩强度：滑杆 0 时也保留 35% 基础遮罩，保证亮色壁纸上文字可读
   // 遮罩 = 纯黑图层，滑杆 0-100 映射 0-92% 黑度，拉满不纯黑、归零无遮罩
   $('.wallpaper-mask').style.opacity = (s.wallOpacity * 0.92 / 100).toFixed(3);
@@ -1409,8 +1423,6 @@ function fillSettingsPane() {
   const s = state.data.settings;
   $('#tgSitesNewTab').checked = s.openSitesNewTab;
   $('#tgSearchNewTab').checked = s.openSearchNewTab;
-  $('#rgScale').value = s.pageScale;
-  $('#rgScaleVal').textContent = s.pageScale + '%';
   $('#tgPageBtns').checked = s.showPageBtns;
   renderLayoutPresets();
   $('#tgHideName').checked = s.hideIconName;
@@ -1854,14 +1866,14 @@ function bindSettingsDialog() {
   });
   bind('tgSitesNewTab', 'openSitesNewTab', renderGrid);
   bind('tgSearchNewTab', 'openSearchNewTab');
-  bindRange('rgScale', 'rgScaleVal', 'pageScale', applyAppearance);
   bind('tgPageBtns', 'showPageBtns', applyAppearance);
   bind('tgHideName', 'hideIconName', renderGrid);
   bind('tgIconShadow', 'iconShadow', applyAppearance);
   bind('tgIconIntro', 'iconIntro', renderGrid);
   bindRange('rgIconRadius', 'rgIconRadiusVal', 'iconRadius', applyAppearance);
   bindRange('rgIconOpacity', 'rgIconOpacityVal', 'iconOpacity', applyAppearance);
-  bindRange('rgIconScale', 'rgIconScaleVal', 'iconScale', applyAppearance);
+  // 图标大小改变网格布局（卡片尺寸/列数/行数），需重排
+  bindRange('rgIconScale', 'rgIconScaleVal', 'iconScale', () => { applyAppearance(); debounce(renderGrid, 120)(); });
   bind('tgSearchHide', 'searchHide', applyAppearance);
   bind('tgSuggest', 'searchSuggest');
   bind('tgKeepText', 'keepSearchText');
