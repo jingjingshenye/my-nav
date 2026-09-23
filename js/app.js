@@ -347,7 +347,7 @@ function normalizeSettings(s = {}) {
       const isLegacy = ['web', 'images', 'video', 'music'].some(k => k in (e.urls || {}));
       const cat = ENGINE_CATALOG.find(c => c.id === e.id);
       return {
-        id: e.id, name: String(e.name), glyph: e.glyph || '', color: e.color || '',
+        id: e.id, name: String(e.name), glyph: e.id === 'bing' ? 'b' : (e.glyph || ''), color: e.color || '',
         urls: isLegacy && cat ? { ...cat.urls, ...urls } : urls,
       };
     });
@@ -1454,11 +1454,8 @@ function renderTypeTabs() {
 
 function updateSearchUI() {
   const eng = resolveEngine();
-  const logo = $('#engineLogo');
-  const glyph = eng.glyph || (eng.name || '?')[0];
-  logo.textContent = glyph;
-  logo.style.background = eng.color || tint(eng.name);
-  logo.style.fontSize = glyph.length > 1 ? '10px' : '13px';
+  // 与引擎菜单一致：favicon 覆盖字母色块，真实图标优先
+  $('#engineLogo').innerHTML = engineGlyphHTML(eng);
 }
 
 /* ---------- 引擎选择弹层（Logo 下拉，对齐 inftab：全部引擎 + 添加） ---------- */
