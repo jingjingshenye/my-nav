@@ -815,11 +815,12 @@ async function hydrateIdbIcons(root) {
 function cardEl(entry, idx = 0) {
   const a = document.createElement('a');
   a.className = 'card' + (entry.folder ? ' folder-card' : '');
-  if (entry.url) {
+  // 编辑态不带 href：避免浏览器悬停时的链接预览（左下角长文本），也杜绝编辑中误触导航
+  if (!state.editMode && entry.url) {
     a.href = entry.url;
     a.target = state.data.settings.openSitesNewTab ? '_blank' : '_self';
     if (a.target === '_blank') a.rel = 'noopener';
-  } else { a.href = '#'; }
+  }
   a.dataset.id = entry.id;
   a.title = entry.url || entry.name;
   a.style.setProperty('--i', idx);
