@@ -878,3 +878,37 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .backup-list li:last-child { border-bottom: none; }
 .backup-list .bt { flex: 1; }
 .backup-list .btn { padding: 4px 12px; font-size: 12px; }
+
+/* ---------- 设置右侧抽屉（对齐 inftab） ---------- */
+.set-drawer-mask { position: fixed; inset: 0; background: rgba(20, 24, 28, .35); z-index: 78; }
+.set-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(440px, 96vw); z-index: 81;
+  background: #f0f1f3;
+  overflow-y: auto;
+  padding: 0 14px 20px;
+  box-shadow: -16px 0 60px rgba(0, 0, 0, .25);
+}
+.set-drawer-head {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  background: #f0f1f3;
+  padding: 16px 6px 10px;
+}
+.set-drawer-head h3 { margin: 0; font-size: 17px; color: var(--tx); }
+.set-card {
+  background: #fff; border-radius: 12px;
+  padding: 2px 16px 6px; margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+}
+.set-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 0 9px; cursor: pointer;
+}
+.set-head h4 { margin: 0; font-size: 14.5px; color: var(--tx); font-weight: 700; }
+.set-head .cl {
+  border: none; background: none; cursor: pointer;
+  color: #9aa0a6; font-size: 15px; line-height: 1; padding: 2px 4px;
+}
+.set-card.collapsed .set-body { display: none; }
+.set-drawer-foot { display: flex; justify-content: flex-end; padding: 4px 2px 10px; }

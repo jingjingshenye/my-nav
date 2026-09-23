@@ -444,7 +444,7 @@ function applyWallpaperUrl(url, title, closeDlg = true) {
   persist();
   applyWallpaper();
   if (closeDlg) $('#dlgGallery').close();
-  if ($('#dlgSettings').open) $('#wpUrl').value = url;
+  if (!$('#setDrawer').hidden) $('#wpUrl').value = url;
   toast(`已应用「${title || '自定义壁纸'}」，配置将自动同步`);
 }
 
@@ -811,7 +811,8 @@ function openSettings() {
   $('#wpUrl').value = s.customWallpaper || '';
   $('#optBingDaily').checked = !!s.bingDaily;
   $$('.range-row input').forEach(updateRangeFill);
-  $('#dlgSettings').showModal();
+  $('#setDrawerMask').hidden = false;
+  $('#setDrawer').hidden = false;
 }
 
 /* ---------- 布局预设 ---------- */
@@ -898,6 +899,7 @@ function onMenuAction(act) {
       renderGrid();
       break;
     case 'settings': openSettings(); break;
+    case 'loadDefault': loadDefaultData(); break;
     case 'sync': fillSyncDialog(); $('#dlgSync').showModal(); break;
     case 'import': $('#importFile').click(); break;
     case 'export': exportData(); break;
@@ -1131,13 +1133,18 @@ function updateRangeFill(el) {
 }
 
 function bindSettingsDialog() {
-  // 设置页左侧分类导航
-  $('#setNav').addEventListener('click', e => {
-    const b = e.target.closest('button[data-pane]');
-    if (!b) return;
-    $$('#setNav button').forEach(x => x.classList.toggle('active', x === b));
-    $$('.set-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === b.dataset.pane));
+  // 设置抽屉：分区折叠/展开
+  $('#setDrawer').addEventListener('click', e => {
+    const head = e.target.closest('.set-head');
+    if (!head) return;
+    const card = head.closest('.set-card');
+    card.classList.toggle('collapsed');
+    head.querySelector('.cl').textContent = card.classList.contains('collapsed') ? '+' : '—';
   });
+  const closeDrawer = closeSetDrawer;
+  $('#setDrawerClose').addEventListener('click', closeDrawer);
+  $('#setDrawerMask').addEventListener('click', closeDrawer);
+  $('#setDrawerDone').addEventListener('click', closeDrawer);
   $('#btnAddEngine').addEventListener('click', () => openEngineDialog(null));
   $('#btnGallery').addEventListener('click', openGallery);
   $('#bingRefresh').addEventListener('click', loadBingGallery);
@@ -1554,7 +1561,7 @@ function bindEvents() {
 
   // 键盘
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleMenu(false); toggleEngineMenu(false); hideSug(); $('#ctxMenu').hidden = true; }
+    if (e.key === 'Escape') { toggleMenu(false); toggleEngineMenu(false); hideSug(); closeSetDrawer(); $('#ctxMenu').hidden = true; }
     const tag = document.activeElement.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
@@ -1901,6 +1908,29 @@ function bindDirectory() {
   addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('#dirPanel').hidden) closeDirectory();
   });
+}
+
+/** 加载项目内置数据（data/default-data.json），覆盖当前站点与外观 */
+async function loadDefaultData() {
+  toggleMenu(false);
+  if (!confirm('加载项目内置数据？当前网址与外观设置会被覆盖（云同步配置保留）。')) return;
+  try {
+    const r = await fetch('data/default-data.json');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const payload = await r.json();
+    if (!Array.isArray(payload.sites)) throw new Error('数据格式不正确');
+    saveBackupNode();
+    const keepSync = state.data.settings.sync;
+    state.data = {
+      version: 1,
+      sites: payload.sites,
+      settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync },
+    };
+    state.page = 0;
+    persist();
+    renderAll();
+    toast(`已加载内置数据（${state.data.sites.length} 个网站）`);
+  } catch (e) { toast('加载失败：' + e.message, 'error'); }
 }
 
 /* ================= 启动 ================= */
