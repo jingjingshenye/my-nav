@@ -926,7 +926,8 @@ function applyAppearance() {
   root.setProperty('--icon-opacity', (s.iconOpacity / 100).toFixed(2));
   $('.stage').style.zoom = s.pageScale / 100;
   // 遮罩强度：滑杆 0 时也保留 35% 基础遮罩，保证亮色壁纸上文字可读
-  $('.wallpaper-mask').style.opacity = (0.35 + 0.65 * s.wallOpacity / 100).toFixed(2);
+  // 遮罩 = 纯黑图层，滑杆 0-100 映射 0-92% 黑度，拉满不纯黑、归零无遮罩
+  $('.wallpaper-mask').style.opacity = (s.wallOpacity * 0.92 / 100).toFixed(3);
   const wp = $('#wallpaper');
   wp.style.filter = s.wallBlur > 0 ? 'blur(' + s.wallBlur + 'px)' : '';
   wp.style.transform = s.wallBlur > 0 ? 'scale(' + (1 + s.wallBlur / 150).toFixed(3) + ')' : '';

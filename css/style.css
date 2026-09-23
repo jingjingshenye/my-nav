@@ -32,7 +32,7 @@ body {
 }
 .wallpaper-mask {
   position: fixed; inset: 0; z-index: -1;
-  background: linear-gradient(rgba(0,0,0,.14), rgba(0,0,0,.30));
+  background: #000;
   pointer-events: none;
 }
 
