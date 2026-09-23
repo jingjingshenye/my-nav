@@ -19,11 +19,11 @@ const I18N = {
     '添加': '新增', '设置': '設定', '搜索': '搜尋', '删除': '刪除', '恢复': '還原',
     '输入并搜索': '輸入並搜尋', '搜索网站': '搜尋網站', '＋ 自定义': '＋ 自訂', '全部': '全部',
     '目标打开方式': '目標打開方式', '在新标签页中打开网站': '在新分頁中開啟網站', '在新标签页中打开第三方搜索结果': '在新分頁中開啟第三方搜尋結果',
-    '语言': '語言', '语言选择': '語言選擇', '视图': '檢視', '屏幕缩放': '螢幕縮放', '翻页按钮': '翻頁按鈕', '行数': '行數', '列数': '列數', '间距': '間距', '松手合并为文件夹': '鬆手合併為資料夾', '松手移入文件夹': '鬆手移入資料夾',
+    '语言': '語言', '语言选择': '語言選擇', '视图': '檢視', '翻页按钮': '翻頁按鈕', '行数': '行數', '列数': '列數', '间距': '間距', '松手合并为文件夹': '鬆手合併為資料夾', '松手移入文件夹': '鬆手移入資料夾',
     '布局': '版面', '图标': '圖示', '隐藏图标名称': '隱藏圖示名稱', '图标阴影': '圖示陰影', '启动动画': '啟動動畫',
     '图标圆角': '圖示圓角', '图标不透明度': '圖示不透明度', '图标大小': '圖示大小',
     '搜索框': '搜尋框', '隐藏搜索框': '隱藏搜尋框', '显示搜索建议': '顯示搜尋建議', '保留搜索框内容': '保留搜尋框內容',
-    '隐藏搜索类别': '隱藏搜尋類別', '显示搜索按钮': '顯示搜尋按鈕', '搜索框大小': '搜尋框大小', '搜索框圆角': '搜尋框圓角', '搜索框不透明度': '搜尋框不透明度',
+    '隐藏搜索类别': '隱藏搜尋類別', '隐藏搜索按钮': '隱藏搜尋按鈕', '搜索框大小': '搜尋框大小', '搜索框圆角': '搜尋框圓角', '搜索框不透明度': '搜尋框不透明度',
     '字体': '字型', '字体阴影': '字型陰影', '字体大小': '字型大小', '字体颜色': '字型顏色',
     '壁纸': '桌布', '自定义壁纸 URL': '自訂桌布 URL', '壁纸库（必应每日 / 随机美图）…': '桌布庫（必應每日 / 隨機美圖）…',
     '上传本地图片': '上傳本機圖片', '每天自动更换必应壁纸': '每天自動更換必應桌布', '壁纸遮罩': '桌布遮罩', '壁纸模糊': '桌布模糊',
@@ -42,7 +42,9 @@ const I18N = {
     '编辑文件夹': '編輯資料夾', '文件夹': '資料夾',
     '编辑壁纸': '編輯桌布', '随机壁纸': '隨機桌布', '收藏当前壁纸': '收藏目前桌布', '下载当前壁纸': '下載目前桌布',
     '搜索图标': '搜尋圖示', '关于': '關於', '关于观澜': '關於觀瀾',
-    '一个参照 inftab 风格的极简起始页。': '一個參照 inftab 風格的極簡起始頁。',
+    '· 取自《孟子》「观水有术，必观其澜」——万川归海，由此观澜的极简起始页。': '· 取自《孟子》「觀水有術，必觀其瀾」——萬川歸海，由此觀瀾的極簡起始頁。',
+    '快捷键：/ 或 Ctrl+K 聚焦搜索 · Ctrl+F 搜索图标 · ←/→ 翻页 · 滚轮翻页 · 右键图标进入编辑': '快捷鍵：/ 或 Ctrl+K 聚焦搜尋 · Ctrl+F 搜尋圖示 · ←/→ 翻頁 · 滾輪翻頁 · 右鍵圖示進入編輯',
+    '在线：': '線上：', '开源：': '開源：',
     '数据可保存在本机，也可通过 Gitee Gist 云端同步，走到哪用到哪。': '資料可儲存在本機，也可透過 Gitee / GitHub Gist 雲端同步，走到哪用到哪。',
     '壁纸库': '桌布庫', '我的收藏': '我的收藏', '必应每日壁纸': '必應每日桌布', '刷新': '重新整理', '换一批': '換一批',
     '每天自动更换为最新必应壁纸': '每天自動更換為最新必應桌布', '加载中…': '載入中…',
@@ -55,7 +57,7 @@ const I18N = {
     '已收藏当前壁纸': '已收藏目前桌布', '当前是内置壁纸，应用网络壁纸后可收藏': '目前是內建桌布，套用網路桌布後可收藏',
     '已创建本地备份节点': '已建立本機備份節點', '已创建备份节点': '已建立備份節點',
     '第 {n} 页': '第 {n} 頁', '已添加「{n}」': '已新增「{n}」',
-    '新建页': '新增頁面', '已新增一页': '已新增一頁', '已移到最后': '已移到最後',
+    '新建页': '新增頁面', '已新增一页': '已新增一頁',
     '已移除「{n}」（引擎库中可随时重新启用）': '已移除「{n}」（引擎庫中可隨時重新啟用）',
     '移除搜索引擎「{n}」？': '移除搜尋引擎「{n}」？', '引擎库中的引擎已全部启用': '引擎庫中的引擎已全部啟用',
     '至少保留一个搜索引擎': '至少保留一個搜尋引擎', '已导入 {n} 个网址': '已匯入 {n} 個網址',
@@ -66,7 +68,6 @@ const I18N = {
     '加载项目内置数据？当前网址与外观设置会被覆盖（云同步配置保留）。': '載入內建資料？目前網址與外觀設定會被覆蓋（雲端同步配置保留）。',
     '恢复到 {n} 的备份？当前数据会被覆盖。': '還原到 {n} 的備份？目前資料會被覆蓋。',
     '壁纸源加载失败，请检查网络后点击「刷新」重试': '桌布來源載入失敗，請檢查網路後點「重新整理」重試',
-    '图片源加载失败，请检查网络后点「换一批」重試': '圖片來源載入失敗，請檢查網路後點「換一批」重試',
     '图片源加载失败，请检查网络后点「换一批」重试': '圖片來源載入失敗，請檢查網路後點「換一批」重試',
     '已开启每日自动更换必应壁纸': '已開啟每日自動更換必應桌布', '已关闭每日自动更换': '已關閉每日自動更換',
     '已应用「{n}」，配置将自动同步': '已套用「{n}」，配置將自動同步',
@@ -88,11 +89,11 @@ const I18N = {
     '添加': 'Add', '设置': 'Settings', '搜索': 'Search', '删除': 'Delete', '恢复': 'Restore',
     '输入并搜索': 'Search or type URL', '搜索网站': 'Search sites', '＋ 自定义': '＋ Custom', '全部': 'All',
     '目标打开方式': 'Link opening', '在新标签页中打开网站': 'Open sites in new tab', '在新标签页中打开第三方搜索结果': 'Open third-party results in new tab',
-    '语言': 'Language', '语言选择': 'Language', '视图': 'View', '屏幕缩放': 'Page zoom', '翻页按钮': 'Page buttons', '行数': 'Rows', '列数': 'Columns', '间距': 'Spacing', '松手合并为文件夹': 'Release to create folder', '松手移入文件夹': 'Release to move into folder',
+    '语言': 'Language', '语言选择': 'Language', '视图': 'View', '翻页按钮': 'Page buttons', '行数': 'Rows', '列数': 'Columns', '间距': 'Spacing', '松手合并为文件夹': 'Release to create folder', '松手移入文件夹': 'Release to move into folder',
     '布局': 'Layout', '图标': 'Icons', '隐藏图标名称': 'Hide icon labels', '图标阴影': 'Icon shadow', '启动动画': 'Launch animation',
     '图标圆角': 'Icon corner radius', '图标不透明度': 'Icon opacity', '图标大小': 'Icon size',
     '搜索框': 'Search box', '隐藏搜索框': 'Hide search box', '显示搜索建议': 'Search suggestions', '保留搜索框内容': 'Keep search text',
-    '隐藏搜索类别': 'Hide search types', '显示搜索按钮': 'Show search button', '搜索框大小': 'Search box size', '搜索框圆角': 'Search box radius', '搜索框不透明度': 'Search box opacity',
+    '隐藏搜索类别': 'Hide search types', '隐藏搜索按钮': 'Hide search button', '搜索框大小': 'Search box size', '搜索框圆角': 'Search box radius', '搜索框不透明度': 'Search box opacity',
     '字体': 'Font', '字体阴影': 'Font shadow', '字体大小': 'Font size', '字体颜色': 'Font color',
     '壁纸': 'Wallpaper', '自定义壁纸 URL': 'Custom wallpaper URL', '壁纸库（必应每日 / 随机美图）…': 'Wallpaper gallery (Bing daily / random)…',
     '上传本地图片': 'Upload image', '每天自动更换必应壁纸': 'Bing wallpaper daily', '壁纸遮罩': 'Wallpaper dim', '壁纸模糊': 'Wallpaper blur',
@@ -111,7 +112,9 @@ const I18N = {
     '编辑文件夹': 'Edit folder', '文件夹': 'Folder',
     '编辑壁纸': 'Edit wallpaper', '随机壁纸': 'Random wallpaper', '收藏当前壁纸': 'Save wallpaper', '下载当前壁纸': 'Download wallpaper',
     '搜索图标': 'Find icons', '关于': 'About', '关于观澜': 'About Guanlan',
-    '一个参照 inftab 风格的极简起始页。': 'A minimal start page inspired by inftab.',
+    '· 取自《孟子》「观水有术，必观其澜」——万川归海，由此观澜的极简起始页。': '· Named from Mencius — "observe the water, observe its waves" — a minimal start page.',
+    '快捷键：/ 或 Ctrl+K 聚焦搜索 · Ctrl+F 搜索图标 · ←/→ 翻页 · 滚轮翻页 · 右键图标进入编辑': 'Shortcuts: / or Ctrl+K focus search · Ctrl+F find icons · ←/→ flip page · scroll to flip · right-click an icon to edit',
+    '在线：': 'Live: ', '开源：': 'Open source: ',
     '数据可保存在本机，也可通过 Gitee Gist 云端同步，走到哪用到哪。': 'Keep data locally, or sync it via Gitee / GitHub Gist and take it anywhere.',
     '壁纸库': 'Gallery', '我的收藏': 'Favorites', '必应每日壁纸': 'Bing daily', '刷新': 'Refresh', '换一批': 'Shuffle',
     '每天自动更换为最新必应壁纸': 'Auto-apply the latest Bing wallpaper daily', '加载中…': 'Loading…',
@@ -124,7 +127,7 @@ const I18N = {
     '已收藏当前壁纸': 'Wallpaper saved to favorites', '当前是内置壁纸，应用网络壁纸后可收藏': 'Built-in wallpaper. Apply a web wallpaper first',
     '已创建本地备份节点': 'Local backup snapshot created', '已创建备份节点': 'Backup snapshot created',
     '第 {n} 页': 'Page {n}', '已添加「{n}」': 'Added "{n}"',
-    '新建页': 'New page', '已新增一页': 'New page added', '已移到最后': 'Moved to the end',
+    '新建页': 'New page', '已新增一页': 'New page added',
     '已移除「{n}」（引擎库中可随时重新启用）': 'Removed "{n}" (can be re-enabled from the catalog)',
     '移除搜索引擎「{n}」？': 'Remove search engine "{n}"?', '引擎库中的引擎已全部启用': 'All catalog engines are enabled',
     '至少保留一个搜索引擎': 'Keep at least one search engine', '已导入 {n} 个网址': 'Imported {n} sites',
@@ -300,7 +303,6 @@ function seedSettings() {
     openSitesNewTab: true,
     openSearchNewTab: true,
     // 视图
-    pageScale: 100,
     showPageBtns: false,
     // 布局
     layout: { mode: 'auto', row: 3, col: 6, gap: 100 },
@@ -382,7 +384,7 @@ function normalizeSettings(s = {}) {
   const gap = parseInt(out.layout.gap, 10);
   out.layout.gap = isNaN(gap) ? 100 : Math.min(200, Math.max(0, gap));
   const pct = (v, d, lo, hi) => Math.min(hi, Math.max(lo, parseInt(v, 10) || d));
-  out.pageScale = pct(out.pageScale, 100, 60, 140);
+  delete out.pageScale; // 旧字段：屏幕缩放已移除，卡片尺寸由图标大小与行列决定
   out.iconRadius = pct(out.iconRadius, 50, 0, 100);
   out.iconOpacity = pct(out.iconOpacity, 100, 30, 100);
   out.iconScale = pct(out.iconScale, 71, 50, 120);
@@ -461,7 +463,6 @@ const state = {
   page: 0,
   pages: 1,
   editMode: false,
-  dragId: null,
   editingId: null, // 当前正在编辑的条目 id（null = 添加）
   editingFolder: false, // 编辑面板当前操作的是文件夹
   editingParent: '', // 新建网址的目标文件夹 id（空 = 桌面）
@@ -1079,9 +1080,6 @@ function renderGrid() {
   }
 
   pagesBox.classList.toggle('editing', state.editMode);
-  // 翻页可循环，箭头常驻不再隐藏（避免翻页时箭头反复显示/隐藏造成闪烁）
-  $('#gridPrev').hidden = false;
-  $('#gridNext').hidden = false;
   showPage(state.page);
   bindSortables();
   hydrateIdbIcons(pagesBox);
@@ -2008,9 +2006,9 @@ function bindSettingsDialog() {
   bind('tgSitesNewTab', 'openSitesNewTab', renderGrid);
   bind('tgSearchNewTab', 'openSearchNewTab');
   bind('tgPageBtns', 'showPageBtns', applyAppearance);
-  bind('tgHideName', 'hideIconName', renderGrid);
+  bind('tgHideName', 'hideIconName', applyAppearance);
   bind('tgIconShadow', 'iconShadow', applyAppearance);
-  bind('tgIconIntro', 'iconIntro', renderGrid);
+  bind('tgIconIntro', 'iconIntro', applyAppearance);
   bindRange('rgIconRadius', 'rgIconRadiusVal', 'iconRadius', applyAppearance);
   bindRange('rgIconOpacity', 'rgIconOpacityVal', 'iconOpacity', applyAppearance);
   // 图标大小改变网格布局（卡片尺寸/列数/行数），需重排
@@ -2038,8 +2036,8 @@ function bindSettingsDialog() {
   bindRange('rgSearchSize', 'rgSearchSizeVal', 'searchScale', applyAppearance);
   bindRange('rgSearchRadius', 'rgSearchRadiusVal', 'searchRadius', applyAppearance);
   bindRange('rgSearchOpacity', 'rgSearchOpacityVal', 'searchOpacity', applyAppearance);
-  bind('tgFontShadow', 'fontShadow', renderGrid);
-  bindRange('rgFontSize', 'rgFontSizeVal', 'fontSize', renderGrid, '');
+  bind('tgFontShadow', 'fontShadow', applyAppearance);
+  bindRange('rgFontSize', 'rgFontSizeVal', 'fontSize', applyAppearance, '');
   bind('tgHideSearchBtn', 'searchHideBtn', applyAppearance);
   bindRange('rgWallOpacity', 'rgWallOpacityVal', 'wallOpacity', applyAppearance);
   bindRange('rgWallBlur', 'rgWallBlurVal', 'wallBlur', applyAppearance);
@@ -2811,7 +2809,6 @@ function advanceIcon(img) {
 }
 
 function bindDirectory() {
-  $('#dirMask').addEventListener('click', closePanel);
   $('#dirSearch').addEventListener('input', e => { dirQ = e.target.value.trim(); renderDirList(); });
 }
 
