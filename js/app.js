@@ -1012,11 +1012,15 @@ function renderSug() {
   d.hidden = false;
 }
 
+let sugSeq = 0;
+
 async function fetchSug(q) {
+  const seq = ++sugSeq;
   const data = await jsonp(
     `https://www.baidu.com/sugrec?pre=1&p=3&ie=UTF-8&json=1&prod=pc&from=pc_web&wd=${encodeURIComponent(q)}`,
     '__navSugCb'
   );
+  if (seq !== sugSeq) return; // 已有更新的请求，丢弃过期结果
   const list = (data && Array.isArray(data.g) ? data.g : []).map(x => String(x.q || '')).filter(Boolean).slice(0, 8);
   sugList = list;
   sugIndex = -1;
@@ -1476,6 +1480,7 @@ function restoreBackup(i) {
   state.page = 0;
   persist();
   renderAll();
+  renderBackups();
   toast('已恢复到 ' + new Date(b.t).toLocaleString());
 }
 
@@ -1528,7 +1533,14 @@ function bindImport() {
         const payload = JSON.parse(reader.result);
         if (!Array.isArray(payload.sites)) throw new Error('缺少 sites 字段');
         const keepSync = state.data.settings.sync;
-        state.data = { version: 1, sites: payload.sites, settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync } };
+        state.data = {
+          version: 1,
+          sites: payload.sites.map(s => ({
+            id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
+            icon: s.icon || '', badge: !!s.badge,
+          })),
+          settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync },
+        };
         state.page = 0;
         persist();
         renderAll();
@@ -1945,8 +1957,6 @@ function advanceIcon(img) {
 function bindDirectory() {
   $('#dirMask').addEventListener('click', closePanel);
   $('#dirSearch').addEventListener('input', e => { dirQ = e.target.value.trim(); renderDirList(); });
-  addEventListener('keydown', e => {
-  });
 }
 
 /** 加载项目内置数据（data/default-data.json），覆盖当前站点与外观 */
