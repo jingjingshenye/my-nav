@@ -602,12 +602,13 @@ async function maybeAutoBingDaily() {
 function iconSources(site) {
   let host;
   try { host = new URL(site.url).host; } catch { return []; }
+  // 图标直接铺满圆形，优先大尺寸图源（更清晰），失败自动降级到下一个
   return [
-    `https://${host}/favicon.ico`,
-    `https://icons.duckduckgo.com/ip3/${host}.ico`,
-    `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
     `https://favicon.im/${host}?larger=true`,
     `https://api.iowen.cn/favicon/${host}.png`,
+    `https://www.google.com/s2/favicons?domain=${host}&sz=128`,
+    `https://${host}/favicon.ico`,
+    `https://icons.duckduckgo.com/ip3/${host}.ico`,
   ];
 }
 

@@ -245,24 +245,26 @@ body {
   width: calc(var(--card, 98px) * 0.66 * var(--icon-scale-factor, 1));
   height: calc(var(--card, 98px) * 0.66 * var(--icon-scale-factor, 1));
   border-radius: calc(var(--icon-radius-pct, 50) * 1%);
-  background: rgba(255,255,255,var(--icon-opacity, 1));
-  box-shadow: 0 4px 16px rgba(0,0,0,.20);
+  --icon-shadow: 0 4px 16px rgba(0, 0, 0, .20);
   display: grid; place-items: center;
-  transition: transform .15s ease, box-shadow .15s ease;
+  transition: transform .15s ease;
 }
-.no-icon-shadow .card .icon { box-shadow: none; }
-.card:hover .icon { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.28); }
-.no-icon-shadow .card:hover .icon { box-shadow: 0 8px 22px rgba(0,0,0,.28); }
-.card .icon img { width: 60%; height: 60%; object-fit: contain; border-radius: 12%; position: relative; z-index: 1; background: rgba(255,255,255,.92); }
+/* 图片即图标：铺满整个圆形，无白底（对齐 inftab） */
+.card .icon img, .card .icon .ph {
+  width: 100%; height: 100%;
+  border-radius: inherit;
+  opacity: var(--icon-opacity, 1);
+  box-shadow: var(--icon-shadow);
+}
+.no-icon-shadow .card .icon { --icon-shadow: none; }
+.card:hover .icon { transform: translateY(-3px); }
+.card .icon img { object-fit: cover; position: relative; z-index: 1; grid-area: 1 / 1; }
 .card .icon .ph {
-  width: 60%; height: 60%;
-  border-radius: 50%;
   display: grid; place-items: center;
-  color: #fff; font-size: calc(var(--card, 98px) * 0.24);
+  color: #fff; font-size: calc(var(--card, 98px) * 0.3);
   font-weight: 600;
   grid-area: 1 / 1;
 }
-.card .icon img { grid-area: 1 / 1; }
 .card .label {
   max-width: calc(var(--card, 98px) * 0.94);
   font-size: var(--label-size, 13px);
@@ -471,8 +473,11 @@ label.mt { margin-top: 12px; }
   .stage { padding-top: 9vh; }
   .grid { gap: 22px 4px; }
   .card .icon { width: 56px; height: 56px; }
-  .card .icon img, .card .icon .ph { width: 32px; height: 32px; }
 }
+
+/* 小组件（待办/笔记/天气）为线条 SVG，保留白色圆底托底 */
+.widget .icon { background: rgba(255, 255, 255, .95); box-shadow: var(--icon-shadow, none); }
+.widget .icon svg { width: 52%; height: 52%; }
 
 /* ========== 设置面板（对齐 inftab） ========== */
 .set-row {
@@ -803,8 +808,8 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
   background: #f5f6f7; border-radius: 50%;
   display: grid; place-items: center; overflow: hidden;
 }
-.dir-icon img { width: 24px; height: 24px; object-fit: contain; }
-.dir-icon .ph { width: 24px; height: 24px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 600; }
+.dir-icon img { width: 100%; height: 100%; object-fit: cover; grid-area: 1 / 1; }
+.dir-icon .ph { width: 100%; height: 100%; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 15px; font-weight: 600; grid-area: 1 / 1; }
 .dir-info { flex: 1; min-width: 0; }
 .dir-info b { display: block; font-size: 13.5px; color: var(--tx); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dir-info i { display: block; font-style: normal; font-size: 11.5px; color: #98a0a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
