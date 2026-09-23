@@ -321,6 +321,11 @@ body {
 .card.draggable { cursor: grab; }
 .card.dragging { opacity: .45; }
 .card.drop-target .icon { outline: 2px dashed #fff; outline-offset: 3px; }
+/* 手机桌面式：拖到普通图标上 = 合成文件夹（目标放大 + 白圈提示，松手生效） */
+.editing .card.merge-target .icon {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .9), 0 8px 22px rgba(0, 0, 0, .28);
+}
 .editing .card .icon { animation: wiggle .32s ease-in-out infinite; }
 .editing .card:nth-child(2n) .icon { animation-direction: reverse; animation-delay: -.16s; }
 .editing .card:nth-child(3n) .icon { animation-delay: -.08s; }

@@ -48,7 +48,7 @@ const I18N = {
     '每天自动更换为最新必应壁纸': '每天自動更換為最新必應桌布', '加载中…': '載入中…',
     '添加搜索引擎': '添加搜尋引擎', '从引擎库启用': '從引擎庫啟用', '或添加自定义引擎': '或添加自訂引擎',
     '名称': '名稱', '网页搜索地址': '網頁搜尋位址', '其他搜索类型地址（可选）': '其他搜尋類型位址（可選）', '保存': '儲存',
-    '已保存': '已儲存', '已删除「{n}」': '已刪除「{n}」', '已移入「{n}」': '已移入「{n}」',
+    '已保存': '已儲存', '已删除「{n}」': '已刪除「{n}」', '已移入「{n}」': '已移入「{n}」', '已创建文件夹': '已建立資料夾',
     '已解散文件夹「{n}」，网址回到桌面': '已解散資料夾「{n}」，網址回到桌面',
     '请填写名称': '請填寫名稱', '请填写有效的网址': '請填寫有效的網址', '请填写文件夹名称': '請填寫資料夾名稱',
     '正在更换壁纸…': '正在更換桌布…', '获取壁纸失败，请稍后再试': '取得桌布失敗，請稍後再試',
@@ -108,7 +108,7 @@ const I18N = {
     '每天自动更换为最新必应壁纸': 'Auto-apply the latest Bing wallpaper daily', '加载中…': 'Loading…',
     '添加搜索引擎': 'Add search engine', '从引擎库启用': 'Enable from catalog', '或添加自定义引擎': 'or add a custom engine',
     '名称': 'Name', '网页搜索地址': 'Web search URL', '其他搜索类型地址（可选）': 'Other search type URLs (optional)', '保存': 'Save',
-    '已保存': 'Saved', '已删除「{n}」': 'Deleted "{n}"', '已移入「{n}」': 'Moved into "{n}"',
+    '已保存': 'Saved', '已删除「{n}」': 'Deleted "{n}"', '已移入「{n}」': 'Moved into "{n}"', '已创建文件夹': 'Folder created',
     '已解散文件夹「{n}」，网址回到桌面': 'Folder "{n}" dissolved, sites are back on the desktop',
     '请填写名称': 'Please enter a name', '请填写有效的网址': 'Please enter a valid URL', '请填写文件夹名称': 'Please enter a folder name',
     '正在更换壁纸…': 'Changing wallpaper…', '获取壁纸失败，请稍后再试': 'Failed to fetch wallpaper, try again later',
@@ -406,6 +406,7 @@ function normalizeSite(s = {}) {
     id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
     icon: s.icon || '', avatar: !!s.avatar, badge: !!s.badge,
     folder: !!s.folder, parent: s.parent || '',
+    h: s.h ? 1 : 0, // 硬分页标记：此图标必须作为新一页的第一个（手机式页面构成持久化）
   };
 }
 
@@ -447,6 +448,8 @@ const state = {
   dragging: false, // Sortable 拖拽进行中
   dragId: null, // 拖拽中的条目 id
   dropFolderId: null, // 拖拽悬停的文件夹 id
+  dropMergeId: null, // 拖拽悬停的普通图标 id（松手合成文件夹，手机桌面式）
+  edgePageCreated: false, // 本次拖拽是否已通过末页边缘新建过页（一次拖拽最多新建一页）
   pendingNewPage: false, // 拖到「＋ 新建页」上的标记
   extraPages: 0, // 编辑态手动新增的空页数（退出编辑自动回收）
   layout: { cols: 6, rows: 3, card: 98 },
@@ -879,9 +882,27 @@ function moveSiteToFolder(siteId, folderId) {
   const folder = state.data.sites.find(x => x.id === folderId);
   if (!site || !folder) return;
   site.parent = folderId;
+  site.h = 0;
   persist();
   renderGrid();
   toast(t('已移入「{n}」', folder.name));
+}
+
+/** 手机桌面式：把一个图标拖到另一个图标上松手，两者合成一个新文件夹（文件夹落在目标位置） */
+function createFolderWith(dragId, targetId) {
+  const arr = state.data.sites;
+  const drag = arr.find(x => x.id === dragId);
+  const target = arr.find(x => x.id === targetId);
+  if (!drag || !target || drag === target || drag.folder || target.folder) return;
+  const folder = { id: uid(), name: t('新建文件夹'), folder: true, h: target.h || 0 };
+  arr.splice(arr.indexOf(target), 0, folder);
+  target.parent = folder.id;
+  drag.parent = folder.id;
+  target.h = 0;
+  drag.h = 0;
+  persist();
+  renderGrid();
+  toast(t('已创建文件夹'));
 }
 
 function addCardEl() {
@@ -897,8 +918,16 @@ function renderGrid() {
   computeLayout();
   const entries = state.data.sites.filter(x => !x.parent);
   const pp = perPage();
-  const need = Math.max(1, Math.ceil(entries.length / pp));
-  const pageCount = Math.max(1, need + (state.editMode ? state.extraPages : 0));
+  // 硬分页（h=1）切组，组内再按每页容量切片——页面构成持久化，删除图标后页面保持稀疏（手机语义）
+  const groups = [[]];
+  entries.forEach(en => {
+    if (en.h && groups[groups.length - 1].length) groups.push([]);
+    groups[groups.length - 1].push(en);
+  });
+  const pageSlices = [];
+  groups.forEach(g => { for (let i = 0; i < g.length; i += pp) pageSlices.push(g.slice(i, i + pp)); });
+  if (!pageSlices.length) pageSlices.push([]);
+  const pageCount = pageSlices.length + (state.editMode ? state.extraPages : 0);
   state.pages = pageCount;
   state.page = Math.max(0, Math.min(state.page, pageCount - 1));
 
@@ -907,7 +936,7 @@ function renderGrid() {
     const pg = document.createElement('div');
     pg.className = 'grid-page' + (p === state.page ? '' : ' off');
     pg.dataset.page = p;
-    const slice = entries.slice(p * pp, p * pp + pp);
+    const slice = pageSlices[p] || [];
     if (slice.length) {
       slice.forEach((en, i) => pg.append(cardEl(en, i)));
     } else if (p === 0 && !state.editMode) {
@@ -997,49 +1026,99 @@ function flipPage(delta) {
 
 /** 把 DOM 中的顶层顺序读回数据（文件夹子站点保持原相对顺序追加在后） */
 function syncOrderFromDOM() {
-  const ids = [];
-  $$('#gridPages .grid-page').forEach(pg => {
-    [...pg.children].forEach(el => { if (el.dataset && el.dataset.id) ids.push(el.dataset.id); });
+  const topLevel = [];
+  $$('#gridPages .grid-page').forEach((pg, pi) => {
+    let first = true;
+    [...pg.children].forEach(el => {
+      if (!el.dataset || !el.dataset.id) return;
+      const en = state.data.sites.find(x => x.id === el.dataset.id);
+      if (!en) return;
+      // 页面构成持久化：每页第一个图标打硬分页标记，其余清除
+      if (pi > 0 && first) en.h = 1; else en.h = 0;
+      first = false;
+      topLevel.push(en);
+    });
   });
-  const map = Object.fromEntries(state.data.sites.map(x => [x.id, x]));
-  const topLevel = ids.map(id => map[id]).filter(Boolean);
   const children = state.data.sites.filter(x => x.parent);
+  children.forEach(c => { c.h = 0; });
   state.data.sites = [...topLevel, ...children];
 }
 
 let sortableInstances = [];
+function makeSortable(pg) {
+  const ins = new Sortable(pg, {
+    group: 'sites',
+    animation: 150,
+    disabled: !state.editMode,
+    draggable: '.card',
+    onStart: evt => {
+      state.dragging = true;
+      state.dragId = evt.item.dataset.id || null;
+      state.edgePageCreated = false;
+    },
+    onEnd: evt => {
+      state.dragging = false;
+      const id = evt.item.dataset.id;
+      const dragged = state.data.sites.find(x => x.id === id);
+      if (state.dropFolderId && dragged && !dragged.folder && state.dropFolderId !== id) {
+        const target = state.dropFolderId;
+        state.dropFolderId = null;
+        state.dropMergeId = null;
+        moveSiteToFolder(id, target);
+        return;
+      }
+      if (state.dropMergeId && dragged && !dragged.folder && state.dropMergeId !== id) {
+        const target = state.dropMergeId;
+        state.dropMergeId = null;
+        state.dropFolderId = null;
+        createFolderWith(id, target);
+        return;
+      }
+      // 拖到「＋ 新建页」上：图标移到末尾并强制开新页（硬分页）
+      if (state.pendingNewPage && dragged) {
+        state.pendingNewPage = false;
+        state.dropFolderId = null;
+        state.dropMergeId = null;
+        moveEntryToIndex(id, Infinity, { hardBreak: true });
+        return;
+      }
+      state.dropFolderId = null;
+      state.dropMergeId = null;
+      state.pendingNewPage = false;
+      syncOrderFromDOM();
+      persist();
+      renderGrid();
+    },
+  });
+  sortableInstances.push(ins);
+  return ins;
+}
 function bindSortables() {
   sortableInstances.forEach(ins => ins.destroy());
   sortableInstances = [];
   if (typeof Sortable === 'undefined') return;
-  $$('#gridPages .grid-page').forEach(pg => {
-    const ins = new Sortable(pg, {
-      group: 'sites',
-      animation: 150,
-      disabled: !state.editMode,
-      draggable: '.card',
-      onStart: evt => {
-        state.dragging = true;
-        state.dragId = evt.item.dataset.id || null;
-      },
-      onEnd: evt => {
-        state.dragging = false;
-        const id = evt.item.dataset.id;
-        const dragged = state.data.sites.find(x => x.id === id);
-        if (state.dropFolderId && dragged && !dragged.folder && state.dropFolderId !== id) {
-          const target = state.dropFolderId;
-          state.dropFolderId = null;
-          moveSiteToFolder(id, target);
-          return;
-        }
-        state.dropFolderId = null;
-        syncOrderFromDOM();
-        persist();
-        renderGrid();
-      },
-    });
-    sortableInstances.push(ins);
-  });
+  $$('#gridPages .grid-page').forEach(makeSortable);
+}
+
+/** 拖拽中到达末页屏幕边缘：像手机桌面一样追加一个空页并翻过去。
+ *  只新增容器与其实例，不重建现有页，不打断进行中的拖拽；一次拖拽最多新建一页 */
+function appendDragPage() {
+  const pagesBox = $('#gridPages');
+  const pg = document.createElement('div');
+  pg.className = 'grid-page';
+  pg.dataset.page = state.pages;
+  pg.style.setProperty('--cols', state.layout.cols);
+  pg.style.setProperty('--card', state.layout.card + 'px');
+  pagesBox.append(pg);
+  state.pages += 1;
+  if (typeof Sortable !== 'undefined') makeSortable(pg);
+  const dots = $('#dots');
+  const d = document.createElement('button');
+  d.type = 'button';
+  d.className = 'dot';
+  d.title = t('第 {n} 页', state.pages);
+  d.addEventListener('click', () => showPage(state.pages - 1));
+  dots.insertBefore(d, dots.querySelector('.dot-new'));
 }
 
 function renderAll() {
@@ -1059,12 +1138,19 @@ function normalizeUrl(u) {
   return /^https?:\/\//i.test(u) ? u : 'https://' + u;
 }
 
-/** 把条目移动到顶层第 targetIdx 个位置（targetIdx 超出总数 = 追加到末尾，可因此新建页） */
-function moveEntryToIndex(dragId, targetIdx) {
+/** 把条目移动到顶层第 targetIdx 个位置（targetIdx 超出总数 = 追加到末尾）。
+ *  opts.hardBreak：追加后强制自成一页（「＋ 新建页」语义） */
+function moveEntryToIndex(dragId, targetIdx, opts = {}) {
   const arr = state.data.sites;
   const from = arr.findIndex(x => x.id === dragId);
   if (from < 0) return;
   const [moved] = arr.splice(from, 1);
+  // 原页首被移走：硬分页标记转移给其后第一个顶层图标，该页剩余构成保持不变
+  if (moved.h) {
+    const nextTop = arr.slice(from).find(x => !x.parent);
+    if (nextTop) nextTop.h = 1;
+    moved.h = 0;
+  }
   if (!isFinite(targetIdx)) targetIdx = arr.length;
   let seen = 0, insertAt = arr.length;
   for (let i = 0; i < arr.length; i++) {
@@ -1074,9 +1160,10 @@ function moveEntryToIndex(dragId, targetIdx) {
     insertAt = i + 1;
   }
   arr.splice(insertAt, 0, moved);
+  if (opts.hardBreak) { moved.h = 1; state.page = Infinity; }
   const topCount = arr.filter(x => !x.parent).length;
   const pagesNow = Math.max(1, Math.ceil(topCount / perPage()));
-  state.page = Math.max(0, Math.min(pagesNow - 1, Math.floor(Math.min(targetIdx, topCount - 1) / perPage())));
+  if (!opts.hardBreak) state.page = Math.max(0, Math.min(pagesNow - 1, Math.floor(Math.min(targetIdx, topCount - 1) / perPage())));
   persist();
   renderGrid();
 }
@@ -2237,13 +2324,48 @@ function bindEvents() {
     if (dy > 20 || dy < -20) { flipPage(dy > 0 ? 1 : -1); wheelAt = now; }
   }, { passive: true });
 
-  // 拖拽期间：悬停屏幕左右边缘自动翻页；悬停文件夹记录移入目标（Sortable 原生拖拽期间 dragover 持续触发）
-  let edgeTimer = null, edgeDir = 0;
+  // 拖拽期间：悬停图标给出去向反馈（文件夹=移入，普通图标=合成文件夹，手机桌面式，松手生效）；
+  // 悬停屏幕左右边缘自动翻页；末页仍向右拖则新建一页并翻过去。
+  // 全部走 capture 阶段：Sortable 内部会阻断 dragover 冒泡，bubble 阶段收不到真实拖拽事件
+  document.addEventListener('dragstart', e => {
+    const card = e.target.closest && e.target.closest('#gridPages .card');
+    if (!card || !state.editMode) return;
+    state.dragging = true;
+    state.dragId = card.dataset.id;
+    state.edgePageCreated = false;
+    state.dropFolderId = null;
+    state.dropMergeId = null;
+  }, true);
+  let edgeTimer = null, edgeDir = 0, hoverCard = null;
+  const clearHover = () => {
+    if (hoverCard) { hoverCard.classList.remove('drop-target', 'merge-target'); hoverCard = null; }
+    state.dropFolderId = null;
+    state.dropMergeId = null;
+  };
   const stopEdge = () => { if (edgeTimer) { clearInterval(edgeTimer); edgeTimer = null; } };
+  // 松手/拖断：只清视觉与翻页状态；dropFolderId/dropMergeId 留给 Sortable 的 onEnd 消费后清理
+  const endDragGesture = () => {
+    stopEdge();
+    if (hoverCard) { hoverCard.classList.remove('drop-target', 'merge-target'); hoverCard = null; }
+    state.dragging = false;
+    state.edgePageCreated = false;
+  };
   document.addEventListener('dragover', e => {
-    if (!state.dragging) { stopEdge(); state.dropFolderId = null; return; }
-    const fc = e.target.closest && e.target.closest('.folder-card');
-    state.dropFolderId = fc ? fc.dataset.id : null;
+    if (!state.dragging) { stopEdge(); clearHover(); return; }
+
+    const card = e.target.closest && e.target.closest('#gridPages .card');
+    if (!card || card.dataset.id === state.dragId || card.classList.contains('add-card')) clearHover();
+    else if (card !== hoverCard) {
+      clearHover();
+      hoverCard = card;
+      const dragged = state.data.sites.find(x => x.id === state.dragId);
+      const target = state.data.sites.find(x => x.id === card.dataset.id);
+      if (dragged && !dragged.folder && target) {
+        if (target.folder) { state.dropFolderId = target.id; card.classList.add('drop-target'); }
+        else { state.dropMergeId = target.id; card.classList.add('merge-target'); }
+      }
+    }
+
     const E = 90;
     const dir = e.clientX < E ? -1 : (e.clientX > innerWidth - E ? 1 : 0);
     if (!dir) { stopEdge(); return; }
@@ -2251,12 +2373,24 @@ function bindEvents() {
     stopEdge(); edgeDir = dir;
     edgeTimer = setInterval(() => {
       const next = state.page + edgeDir;
-      if (next < 0 || next > state.pages - 1) { stopEdge(); return; }
+      if (next < 0) { stopEdge(); return; }
+      if (next > state.pages - 1) {
+        // 已是末页仍向右拖：新建一页并翻过去（一次拖拽只建一页）。
+        // 页面构成经 syncOrderFromDOM 硬分页持久化，新页在松手后也能保留。
+        if (!state.edgePageCreated) {
+          state.edgePageCreated = true;
+          appendDragPage();
+          showPage(state.pages - 1);
+          toast(t('已新增一页'));
+        }
+        stopEdge();
+        return;
+      }
       showPage(next);
     }, 650);
-  });
-  document.addEventListener('drop', stopEdge);
-  document.addEventListener('dragend', stopEdge);
+  }, true);
+  document.addEventListener('drop', endDragGesture, true);
+  document.addEventListener('dragend', endDragGesture, true);
 
   // 翻页箭头
   $('#gridPrev').addEventListener('click', () => flipPage(-1));
