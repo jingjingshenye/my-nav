@@ -321,6 +321,15 @@ body {
 .card.draggable { cursor: grab; }
 .card.dragging { opacity: .45; }
 .card.drop-target .icon { outline: 2px dashed #fff; outline-offset: 3px; }
+/* 拖拽合并提示气泡（重叠度 ≥70% 时出现在目标下方） */
+.merge-hint {
+  position: fixed; z-index: 65; transform: translateX(-50%);
+  background: rgba(0, 0, 0, .74); color: #fff; font-size: 12px;
+  padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  pointer-events: none; opacity: 0; transition: opacity .15s ease;
+}
+.merge-hint.show { opacity: 1; }
+
 /* 手机桌面式：拖到普通图标上 = 合成文件夹（目标放大 + 白圈提示，松手生效） */
 .editing .card.merge-target .icon {
   transform: scale(1.12);

@@ -19,7 +19,7 @@ const I18N = {
     '添加': '新增', '设置': '設定', '搜索': '搜尋', '删除': '刪除', '恢复': '還原',
     '输入并搜索': '輸入並搜尋', '搜索网站': '搜尋網站', '＋ 自定义': '＋ 自訂', '全部': '全部',
     '目标打开方式': '目標打開方式', '在新标签页中打开网站': '在新分頁中開啟網站', '在新标签页中打开第三方搜索结果': '在新分頁中開啟第三方搜尋結果',
-    '语言': '語言', '语言选择': '語言選擇', '视图': '檢視', '屏幕缩放': '螢幕縮放', '翻页按钮': '翻頁按鈕', '行数': '行數', '列数': '列數', '间距': '間距',
+    '语言': '語言', '语言选择': '語言選擇', '视图': '檢視', '屏幕缩放': '螢幕縮放', '翻页按钮': '翻頁按鈕', '行数': '行數', '列数': '列數', '间距': '間距', '松手合并为文件夹': '鬆手合併為資料夾', '松手移入文件夹': '鬆手移入資料夾',
     '布局': '版面', '图标': '圖示', '隐藏图标名称': '隱藏圖示名稱', '图标阴影': '圖示陰影', '启动动画': '啟動動畫',
     '图标圆角': '圖示圓角', '图标不透明度': '圖示不透明度', '图标大小': '圖示大小',
     '搜索框': '搜尋框', '隐藏搜索框': '隱藏搜尋框', '显示搜索建议': '顯示搜尋建議', '保留搜索框内容': '保留搜尋框內容',
@@ -79,7 +79,7 @@ const I18N = {
     '添加': 'Add', '设置': 'Settings', '搜索': 'Search', '删除': 'Delete', '恢复': 'Restore',
     '输入并搜索': 'Search or type URL', '搜索网站': 'Search sites', '＋ 自定义': '＋ Custom', '全部': 'All',
     '目标打开方式': 'Link opening', '在新标签页中打开网站': 'Open sites in new tab', '在新标签页中打开第三方搜索结果': 'Open third-party results in new tab',
-    '语言': 'Language', '语言选择': 'Language', '视图': 'View', '屏幕缩放': 'Page zoom', '翻页按钮': 'Page buttons', '行数': 'Rows', '列数': 'Columns', '间距': 'Spacing',
+    '语言': 'Language', '语言选择': 'Language', '视图': 'View', '屏幕缩放': 'Page zoom', '翻页按钮': 'Page buttons', '行数': 'Rows', '列数': 'Columns', '间距': 'Spacing', '松手合并为文件夹': 'Release to create folder', '松手移入文件夹': 'Release to move into folder',
     '布局': 'Layout', '图标': 'Icons', '隐藏图标名称': 'Hide icon labels', '图标阴影': 'Icon shadow', '启动动画': 'Launch animation',
     '图标圆角': 'Icon corner radius', '图标不透明度': 'Icon opacity', '图标大小': 'Icon size',
     '搜索框': 'Search box', '隐藏搜索框': 'Hide search box', '显示搜索建议': 'Search suggestions', '保留搜索框内容': 'Keep search text',
@@ -2438,10 +2438,25 @@ function bindEvents() {
     state.edgePageCreated = false;
     state.dropFolderId = null;
     state.dropMergeId = null;
+    // 记录抓取点偏移与卡片尺寸：dragover 时据此还原拖影的真实矩形，用于重叠度计算
+    const r = card.getBoundingClientRect();
+    grab = r.width > 0 ? { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height } : null;
+    armedEl = null;
   }, true);
-  let edgeTimer = null, edgeDir = 0, hoverCard = null;
+  let edgeTimer = null, edgeDir = 0, hoverCard = null, armedEl = null, grab = null;
+  const showMergeHint = (el, text) => {
+    let hint = $('.merge-hint');
+    if (!hint) { hint = document.createElement('div'); hint.className = 'merge-hint'; document.body.append(hint); }
+    const r = el.getBoundingClientRect();
+    hint.textContent = text;
+    hint.style.left = Math.round(r.left + r.width / 2) + 'px';
+    hint.style.top = Math.round(r.bottom + 6) + 'px';
+    hint.classList.add('show');
+  };
+  const hideMergeHint = () => { const h = $('.merge-hint'); if (h) h.classList.remove('show'); };
   const clearHover = () => {
     if (hoverCard) { hoverCard.classList.remove('drop-target', 'merge-target'); hoverCard = null; }
+    hideMergeHint();
     state.dropFolderId = null;
     state.dropMergeId = null;
   };
@@ -2450,22 +2465,52 @@ function bindEvents() {
   const endDragGesture = () => {
     stopEdge();
     if (hoverCard) { hoverCard.classList.remove('drop-target', 'merge-target'); hoverCard = null; }
+    hideMergeHint();
+    armedEl = null;
+    grab = null;
     state.dragging = false;
     state.edgePageCreated = false;
   };
   document.addEventListener('dragover', e => {
     if (!state.dragging) { stopEdge(); clearHover(); return; }
 
-    const card = e.target.closest && e.target.closest('#gridPages .card');
-    if (!card || card.dataset.id === state.dragId || card.classList.contains('add-card')) clearHover();
+    // 目标判定：按拖影矩形与各卡矩形的重叠系数（交集/较小面积）。≥70% 视为“压住”，
+    // 已锁目标降到 45% 才释放（迟滞），避免 Sortable 重排导致的高亮抖动
+    let card = null;
+    if (grab) {
+      const rect = { left: e.clientX - grab.dx, top: e.clientY - grab.dy, right: e.clientX - grab.dx + grab.w, bottom: e.clientY - grab.dy + grab.h };
+      const area = grab.w * grab.h;
+      const ratios = new Map();
+      let best = null, bestRatio = 0;
+      $$('#gridPages .grid-page:not(.off) .card').forEach(el => {
+        if (el.dataset.id === state.dragId || el.classList.contains('add-card')) return;
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const ix = Math.min(rect.right, r.right) - Math.max(rect.left, r.left);
+        const iy = Math.min(rect.bottom, r.bottom) - Math.max(rect.top, r.top);
+        if (ix <= 0 || iy <= 0) return;
+        const ratio = (ix * iy) / Math.min(area, r.width * r.height);
+        ratios.set(el, ratio);
+        if (ratio > bestRatio) { bestRatio = ratio; best = el; }
+      });
+      if (armedEl) {
+        if ((ratios.get(armedEl) || 0) >= 0.45) card = armedEl;
+        else armedEl = null;
+      }
+      if (!card && best && bestRatio >= 0.7) { armedEl = best; card = best; }
+    } else {
+      const hit = e.target.closest && e.target.closest('#gridPages .grid-page:not(.off) .card');
+      card = hit && hit.dataset.id !== state.dragId && !hit.classList.contains('add-card') ? hit : null;
+    }
+    if (!card) clearHover();
     else if (card !== hoverCard) {
       clearHover();
       hoverCard = card;
       const dragged = state.data.sites.find(x => x.id === state.dragId);
       const target = state.data.sites.find(x => x.id === card.dataset.id);
       if (dragged && !dragged.folder && target) {
-        if (target.folder) { state.dropFolderId = target.id; card.classList.add('drop-target'); }
-        else { state.dropMergeId = target.id; card.classList.add('merge-target'); }
+        if (target.folder) { state.dropFolderId = target.id; card.classList.add('drop-target'); showMergeHint(card, t('松手移入文件夹')); }
+        else { state.dropMergeId = target.id; card.classList.add('merge-target'); showMergeHint(card, t('松手合并为文件夹')); }
       }
     }
 
