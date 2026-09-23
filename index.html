@@ -6,7 +6,7 @@
   <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
   <title>Nav · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260925c">
+  <link rel="stylesheet" href="css/style.css?v=20260926a">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -178,12 +178,6 @@
         </div>
       </section>
 
-      <section class="set-card">
-        <div class="set-head"><h4>通知</h4><button type="button" class="cl">&mdash;</button></div>
-        <div class="set-body">
-          <div class="set-row"><span>在图标上显示待办事项数量</span><label class="switch"><input type="checkbox" id="tgTodoBadge"><i></i></label></div>
-        </div>
-      </section>
 
       <section class="set-card">
         <div class="set-head"><h4>语言</h4><button type="button" class="cl">&mdash;</button></div>
@@ -368,55 +362,8 @@
     </form>
   </dialog>
 
-  <!-- 待办事项 -->
-  <dialog id="dlgTodo">
-    <div class="dlg-head">
-      <h3>待办事项</h3>
-      <button class="dlg-close" data-close title="关闭">&times;</button>
-    </div>
-    <div class="dlg-body">
-      <form id="todoForm" class="todo-add">
-        <input id="todoInput" placeholder="添加新待办，回车确认" maxlength="60" autocomplete="off">
-        <button type="submit" class="btn primary">添加</button>
-      </form>
-      <ul class="todo-list" id="todoList"></ul>
-      <p class="hint" id="todoEmpty" hidden>暂无待办，添加一条吧</p>
-    </div>
-    <div class="dlg-foot">
-      <button type="button" class="btn" id="todoClear">清除已完成</button>
-    </div>
-  </dialog>
 
-  <!-- 笔记 -->
-  <dialog id="dlgNote">
-    <div class="dlg-head">
-      <h3>笔记</h3>
-      <button class="dlg-close" data-close title="关闭">&times;</button>
-    </div>
-    <div class="dlg-body">
-      <textarea id="noteText" placeholder="随手记点什么…（自动保存）"></textarea>
-      <p class="hint" id="noteSaved"></p>
-    </div>
-  </dialog>
 
-  <!-- 天气 -->
-  <dialog id="dlgWeather">
-    <div class="dlg-head">
-      <h3>天气</h3>
-      <button class="dlg-close" data-close title="关闭">&times;</button>
-    </div>
-    <div class="dlg-body">
-      <div class="wt-now">
-        <b id="wtTemp">--</b>
-        <span id="wtDesc">点击切换城市获取实时天气</span>
-      </div>
-      <div class="wt-days" id="wtDays"></div>
-      <div class="wt-city">
-        <input id="wtCity" placeholder="城市名，如：上海">
-        <button type="button" class="btn" id="wtChange">切换城市</button>
-      </div>
-    </div>
-  </dialog>
 
   <!-- 关于 -->
   <dialog id="dlgAbout">
@@ -437,6 +384,6 @@
   <div class="toasts" id="toasts"></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js?v=20260925c"></script>
+  <script type="module" src="js/app.js?v=20260926a"></script>
 </body>
 </html>

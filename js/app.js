@@ -144,15 +144,10 @@ function seedSettings() {
     animEasing: 'default',
     // 搜索按钮
     searchHideBtn: true,
-    showTodoBadge: true,
     hideWindmill: false,
     // 壁纸遮罩 / 模糊
     wallOpacity: 40,
     wallBlur: 0,
-    // 小组件
-    todo: { items: [] },
-    note: '',
-    weatherCity: '北京',
     // 壁纸
     wallpaper: 'preset:forest',
     customWallpaper: '',
@@ -226,12 +221,8 @@ function normalizeSettings(s = {}) {
   out.bingDaily = out.bingDaily === true;
   if (typeof out.bingDate !== 'string') out.bingDate = '';
   delete out.faviconApi; // 已废弃：图标改为多源自动回退
-  out.todo = (out.todo && Array.isArray(out.todo.items))
-    ? { items: out.todo.items.filter(t => t && typeof t.text === 'string' && t.text.trim())
-        .map(t => ({ id: t.id || uid(), text: String(t.text).slice(0, 120), done: !!t.done })) }
-    : { items: [] };
-  out.note = typeof out.note === 'string' ? out.note.slice(0, 20000) : '';
-  out.weatherCity = typeof out.weatherCity === 'string' && out.weatherCity.trim() ? out.weatherCity.trim() : '北京';
+  // 待办 / 笔记 / 天气小组件已移除，存量字段一并清理
+  delete out.todo; delete out.note; delete out.weatherCity; delete out.weatherCache; delete out.showTodoBadge;
   out.wallOpacity = pct(out.wallOpacity, 40, 0, 100);
   out.wallBlur = pct(out.wallBlur, 0, 0, 20);
   out.wallFavorites = Array.isArray(out.wallFavorites)
@@ -241,7 +232,6 @@ function normalizeSettings(s = {}) {
   // 旧字段 searchBtn(显示) 迁移为 searchHideBtn(隐藏)
   if (s.searchHideBtn === undefined && s.searchBtn !== undefined) out.searchHideBtn = s.searchBtn === false;
   out.searchHideBtn = out.searchHideBtn !== false; // 默认隐藏（对齐 inftab）
-  out.showTodoBadge = out.showTodoBadge !== false;
   out.hideWindmill = out.hideWindmill === true;
   delete out.searchBtn;
   return out;
@@ -711,13 +701,13 @@ function renderGrid() {
   const grid = $('#grid'), dots = $('#dots');
   computeLayout();
   const pp = perPage();
-  const total = state.data.sites.length + WIDGETS.length + (state.editMode ? 1 : 0);
+  const total = state.data.sites.length + (state.editMode ? 1 : 0);
   state.pages = Math.max(1, Math.ceil(total / pp));
   state.page = Math.min(state.page, state.pages - 1);
 
   // 第 0 页前 3 格固定为小组件（待办/笔记/天气），其余页放站点
-  const start = state.page * pp - (state.page > 0 ? WIDGETS.length : 0);
-  const count = pp - (state.page === 0 ? WIDGETS.length : 0);
+  const start = state.page * pp;
+  const count = pp;
   const slice = state.data.sites.slice(start, start + count);
   grid.style.setProperty('--cols', state.layout.cols);
   grid.style.setProperty('--card', state.layout.card + 'px');
@@ -727,8 +717,7 @@ function renderGrid() {
   if (!slice.length && state.page === 0 && !state.editMode) {
     grid.innerHTML = '<p class="empty-tip">这里空空如也，点击右上角菜单 → 「添加网址」开始使用</p>';
   } else {
-    if (state.page === 0) WIDGETS.forEach(w => grid.append(widgetEl(w)));
-    slice.forEach((s, i) => grid.append(cardEl(s, i + WIDGETS.length)));
+    slice.forEach((s, i) => grid.append(cardEl(s, i)));
     if (state.editMode && state.page === 0) grid.append(addCardEl());
   }
 
@@ -987,7 +976,6 @@ function fillSettingsPane() {
   $('#rgFontSize').value = s.fontSize;
   $('#rgFontSizeVal').textContent = String(s.fontSize);
   $('#tgHideSearchBtn').checked = s.searchHideBtn;
-  $('#tgTodoBadge').checked = s.showTodoBadge;
   $('#tgHideWindmill').checked = s.hideWindmill;
   renderEaseCards();
   $('#rgWallOpacity').value = s.wallOpacity;
@@ -1410,7 +1398,6 @@ function bindSettingsDialog() {
   bind('tgFontShadow', 'fontShadow', renderGrid);
   bindRange('rgFontSize', 'rgFontSizeVal', 'fontSize', renderGrid, '');
   bind('tgHideSearchBtn', 'searchHideBtn', applyAppearance);
-  bind('tgTodoBadge', 'showTodoBadge', renderGrid);
   bind('tgHideWindmill', 'hideWindmill', applyAppearance);
   bindRange('rgWallOpacity', 'rgWallOpacityVal', 'wallOpacity', applyAppearance);
   bindRange('rgWallBlur', 'rgWallBlurVal', 'wallBlur', applyAppearance);
@@ -1444,7 +1431,7 @@ function bindSettingsDialog() {
     saveBackupNode();
     const cur = state.data.settings;
     const keepSync = cur.sync;
-    state.data.settings = { ...seedSettings(), sync: keepSync, todo: cur.todo, note: cur.note, weatherCity: cur.weatherCity };
+    state.data.settings = { ...seedSettings(), sync: keepSync };
     state.page = 0;
     persist();
     renderAll();
@@ -1785,9 +1772,6 @@ function bindEvents() {
   bindEngineDialog();
   bindSyncDialog();
   bindImport();
-  bindTodo();
-  bindNote();
-  bindWeather();
   bindDirectory();
 
   // 壁纸为本地图片时从 IndexedDB 恢复显示
@@ -1853,170 +1837,6 @@ function bindEvents() {
   $('#gridNext').addEventListener('click', () => flipPage(1));
 
   addEventListener('resize', debounce(renderGrid, 200));
-}
-
-/* ================= 小组件：待办 / 笔记 / 天气 ================= */
-const WIDGETS = [
-  { id: 'todo', name: '待办事项' },
-  { id: 'note', name: '笔记' },
-  { id: 'weather', name: '天气' },
-];
-
-const SVG_TODO = '<svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
-const SVG_NOTE = '<svg viewBox="0 0 24 24" fill="none" stroke="#e6a157" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
-const SVG_CLOUD = '<svg viewBox="0 0 24 24" fill="#5aa2ff" stroke="none"><path d="M18.4 10.6a6 6 0 00-11.3-2A5 5 0 006 18.5h12a4 4 0 00.4-7.9z"/></svg>';
-
-const todoUndone = () => state.data.settings.todo.items.filter(t => !t.done).length;
-
-function widgetEl(w) {
-  const a = document.createElement('a');
-  a.className = 'card widget';
-  a.dataset.widget = w.id;
-  // 与站点图标一致：右键小组件进入编辑状态
-  a.addEventListener('contextmenu', e => {
-    e.preventDefault();
-    if (!state.editMode) setEditMode(true);
-  });
-  let inner = '';
-  if (w.id === 'todo') {
-    const n = state.data.settings.showTodoBadge ? todoUndone() : 0;
-    inner = `<span class="icon">${SVG_TODO}${n ? '<i class="count-badge">' + (n > 99 ? '99+' : n) + '</i>' : ''}</span><span class="label">待办事项</span>`;
-    a.addEventListener('click', e => { e.preventDefault(); openTodo(); });
-  } else if (w.id === 'note') {
-    inner = `<span class="icon">${SVG_NOTE}</span><span class="label">笔记</span>`;
-    a.addEventListener('click', e => { e.preventDefault(); openNote(); });
-  } else {
-    const t = state.data.settings.weatherCache;
-    inner = `<span class="icon">${SVG_CLOUD}</span><span class="label">${t && t.t !== '' ? t.t + '°C' : '天气'}</span>`;
-    a.addEventListener('click', e => { e.preventDefault(); openWeather(); });
-  }
-  a.innerHTML = inner;
-  return a;
-}
-
-/* ---------- 待办事项 ---------- */
-function openTodo() { renderTodoList(); $('#dlgTodo').showModal(); }
-
-function renderTodoList() {
-  const items = state.data.settings.todo.items;
-  const list = $('#todoList');
-  list.innerHTML = '';
-  $('#todoEmpty').hidden = items.length > 0;
-  items.forEach((t, i) => {
-    const li = document.createElement('li');
-    li.className = t.done ? 'done' : '';
-    li.innerHTML = `<input type="checkbox" ${t.done ? 'checked' : ''}><span class="t">${escapeHtml(t.text)}</span><button type="button" class="del" title="删除">${SVG_X}</button>`;
-    li.querySelector('input').addEventListener('change', e => {
-      t.done = e.target.checked;
-      persist();
-      renderTodoList();
-      renderGrid();
-    });
-    li.querySelector('.del').addEventListener('click', () => {
-      items.splice(i, 1);
-      persist();
-      renderTodoList();
-      renderGrid();
-    });
-    list.append(li);
-  });
-}
-
-function bindTodo() {
-  $('#todoForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const text = $('#todoInput').value.trim();
-    if (!text) return;
-    state.data.settings.todo.items.push({ id: uid(), text, done: false });
-    $('#todoInput').value = '';
-    persist();
-    renderTodoList();
-    renderGrid();
-  });
-  $('#todoClear').addEventListener('click', () => {
-    const s = state.data.settings.todo;
-    s.items = s.items.filter(t => !t.done);
-    persist();
-    renderTodoList();
-    renderGrid();
-  });
-}
-
-/* ---------- 笔记 ---------- */
-function openNote() {
-  $('#noteText').value = state.data.settings.note || '';
-  $('#noteSaved').textContent = '';
-  $('#dlgNote').showModal();
-}
-
-function bindNote() {
-  const ta = $('#noteText');
-  const save = debounce(() => {
-    state.data.settings.note = ta.value;
-    persistLocal();
-    $('#noteSaved').textContent = '已自动保存 ' + new Date().toLocaleTimeString();
-  }, 500);
-  ta.addEventListener('input', save);
-}
-
-/* ---------- 天气（Open-Meteo 免密钥） ---------- */
-const WMO = { 0: '晴', 1: '基本晴', 2: '多云', 3: '阴', 45: '雾', 48: '雾凇', 51: '毛毛雨', 53: '毛毛雨', 55: '毛毛雨', 61: '小雨', 63: '中雨', 65: '大雨', 66: '冻雨', 67: '冻雨', 71: '小雪', 73: '中雪', 75: '大雪', 77: '雪粒', 80: '阵雨', 81: '阵雨', 82: '强阵雨', 85: '阵雪', 86: '阵雪', 95: '雷阵雨', 96: '雷阵雨伴冰雹', 99: '雷阵雨伴冰雹' };
-const DAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-
-async function loadWeather(city) {
-  const enc = encodeURIComponent(city);
-  const geo = await fetchJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${enc}&count=1&language=zh&format=json`);
-  const g = geo && geo.results && geo.results[0];
-  if (!g) throw new Error('未找到城市「' + city + '」');
-  const w = await fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${g.latitude}&longitude=${g.longitude}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`);
-  const cur = w.current || {};
-  const info = {
-    city, t: Math.round(cur.temperature_2m), desc: WMO[cur.weather_code] || '—',
-    days: (w.daily && w.daily.time ? w.daily.time : []).map((d, i) => ({
-      d: DAY_NAMES[new Date(d).getDay()],
-      w: WMO[w.daily.weather_code[i]] || '—',
-      t: Math.round(w.daily.temperature_2m_min[i]) + '~' + Math.round(w.daily.temperature_2m_max[i]) + '°',
-    })),
-    at: Date.now(),
-  };
-  state.data.settings.weatherCache = info;
-  persistLocal();
-  updateWeatherLabel();
-  renderWeatherDlg(info);
-}
-
-function updateWeatherLabel() {
-  const c = state.data.settings.weatherCache;
-  const label = $('#grid [data-widget=weather] .label');
-  if (label && c && c.t !== undefined) label.textContent = c.t + '°C';
-}
-
-function openWeather() {
-  const s = state.data.settings;
-  $('#wtCity').value = s.weatherCity;
-  const cache = s.weatherCache;
-  if (cache && cache.days) renderWeatherDlg(cache);
-  else { $('#wtTemp').textContent = '--'; $('#wtDesc').textContent = '加载中…'; }
-  loadWeather(s.weatherCity)
-    .catch(e => { $('#wtDesc').textContent = '天气获取失败：' + e.message; });
-}
-
-function renderWeatherDlg(info) {
-  $('#wtTemp').textContent = info.t + '°C';
-  $('#wtDesc').textContent = info.city + ' · ' + info.desc;
-  $('#wtDays').innerHTML = (info.days || []).map(d =>
-    `<div class="wt-day"><div class="d">${escapeHtml(d.d)}</div><div class="t">${escapeHtml(d.t)}</div><div class="w">${escapeHtml(d.w)}</div></div>`).join('');
-}
-
-function bindWeather() {
-  $('#wtChange').addEventListener('click', () => {
-    const city = $('#wtCity').value.trim();
-    if (!city) return;
-    state.data.settings.weatherCity = city;
-    persist();
-    $('#wtDesc').textContent = '加载中…';
-    loadWeather(city).catch(e => toast('天气获取失败：' + e.message, 'error'));
-  });
 }
 
 /* ================= 网站目录（本地内置，对齐 inftab 图标库） ================= */
