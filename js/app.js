@@ -11,6 +11,165 @@ const SVG_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 const SVG_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5a2 2 0 012-2h4l2 2.5h7a2 2 0 012 2v8.5a2 2 0 01-2 2h-13a2 2 0 01-2-2z"/></svg>';
 const SVG_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
 
+/* ================= 多语言（简体 / 繁體 / English） ================= */
+/* 词典以简体原文为键；applyI18n() 替换静态 DOM 文本，JS 动态文案用 t() 包裹 */
+const I18N = {
+  'zh-tw': {
+    '网页': '網頁', '图片': '圖片', '新闻': '新聞', '视频': '視頻', '地图': '地圖',
+    '添加': '新增', '设置': '設定', '搜索': '搜尋', '删除': '刪除', '恢复': '還原',
+    '输入并搜索': '輸入並搜尋', '搜索网站': '搜尋網站', '＋ 自定义': '＋ 自訂', '全部': '全部',
+    '目标打开方式': '目標打開方式', '在新标签页中打开网站': '在新分頁中開啟網站', '在新标签页中打开第三方搜索结果': '在新分頁中開啟第三方搜尋結果',
+    '语言': '語言', '语言选择': '語言選擇', '视图': '檢視', '屏幕缩放': '螢幕縮放', '翻页按钮': '翻頁按鈕',
+    '布局': '版面', '图标': '圖示', '隐藏图标名称': '隱藏圖示名稱', '图标阴影': '圖示陰影', '启动动画': '啟動動畫',
+    '图标圆角': '圖示圓角', '图标不透明度': '圖示不透明度', '图标大小': '圖示大小',
+    '搜索框': '搜尋框', '隐藏搜索框': '隱藏搜尋框', '显示搜索建议': '顯示搜尋建議', '保留搜索框内容': '保留搜尋框內容',
+    '隐藏搜索类别': '隱藏搜尋類別', '显示搜索按钮': '顯示搜尋按鈕', '搜索框大小': '搜尋框大小', '搜索框圆角': '搜尋框圓角', '搜索框不透明度': '搜尋框不透明度',
+    '字体': '字型', '字体阴影': '字型陰影', '字体大小': '字型大小', '字体颜色': '字型顏色',
+    '壁纸': '桌布', '自定义壁纸 URL': '自訂桌布 URL', '壁纸库（必应每日 / 随机美图）…': '桌布庫（必應每日 / 隨機美圖）…',
+    '上传本地图片': '上傳本機圖片', '每天自动更换必应壁纸': '每天自動更換必應桌布', '壁纸遮罩': '桌布遮罩', '壁纸模糊': '桌布模糊',
+    '搜索引擎': '搜尋引擎', '点搜索框左侧 Logo 可快速切换；「添加」里可从引擎库启用内置引擎。': '點搜尋框左側 Logo 可快速切換；「添加」裡可從引擎庫啟用內建引擎。', '＋ 添加搜索引擎': '＋ 添加搜尋引擎',
+    '动画': '動畫', '作用于图标入场动画': '作用於圖示入場動畫',
+    '重置设置': '重設設定', '恢复默认外观与搜索设置；网址与云同步配置会保留。': '還原預設外觀與搜尋設定；網址與雲端同步配置會保留。', '还原设置': '還原設定',
+    '云同步': '雲端同步', '与其他设备保持同步': '與其他裝置保持同步', '上次同步时间': '上次同步時間', '同步方式': '同步方式',
+    '仅本地': '僅本機', 'Gitee Gist 云端': 'Gitee Gist 雲端', 'GitHub Gist 云端': 'GitHub Gist 雲端',
+    'Gitee 云端配置': 'Gitee 雲端配置', 'GitHub Gist 配置': 'GitHub Gist 配置', '访问令牌 Token': '存取權杖 Token', '数据文件名': '資料檔案名稱',
+    '推送到云端': '推送到雲端', '从云端拉取': '從雲端拉取', '备份与恢复': '備份與還原', '立即备份': '立即備份',
+    '导入': '匯入', '导出': '匯出', '内置数据': '內建資料', '编辑模式': '編輯模式', '暂无备份节点': '暫無備份節點',
+    '没有匹配的网站': '沒有符合的網站', '已添加': '已新增', '添加网址': '添加網址', '新建文件夹': '新建資料夾',
+    '这里空空如也，点击右上角菜单 → 「添加网址」开始使用': '這裡空空如也，點擊右上角選單 → 「添加網址」開始使用',
+    '确定': '確定', '取消': '取消', '网站地址': '網站位址', '网站名称': '網站名稱', '选择图标': '選擇圖示',
+    '纯色图标': '純色圖示', '本地图标': '本機圖示', '编辑图标': '編輯圖示', '添加图标': '添加圖示',
+    '编辑文件夹': '編輯資料夾', '文件夹': '資料夾',
+    '编辑壁纸': '編輯桌布', '随机壁纸': '隨機桌布', '收藏当前壁纸': '收藏目前桌布', '下载当前壁纸': '下載目前桌布',
+    '搜索图标': '搜尋圖示', '关于': '關於', '关于 Nav': '關於 Nav',
+    '一个参照 inftab 风格的极简起始页。': '一個參照 inftab 風格的極簡起始頁。',
+    '数据可保存在本机，也可通过 Gitee Gist 云端同步，走到哪用到哪。': '資料可儲存在本機，也可透過 Gitee / GitHub Gist 雲端同步，走到哪用到哪。',
+    '壁纸库': '桌布庫', '我的收藏': '我的收藏', '必应每日壁纸': '必應每日桌布', '刷新': '重新整理', '换一批': '換一批',
+    '每天自动更换为最新必应壁纸': '每天自動更換為最新必應桌布', '加载中…': '載入中…',
+    '添加搜索引擎': '添加搜尋引擎', '从引擎库启用': '從引擎庫啟用', '或添加自定义引擎': '或添加自訂引擎',
+    '名称': '名稱', '网页搜索地址': '網頁搜尋位址', '其他搜索类型地址（可选）': '其他搜尋類型位址（可選）', '保存': '儲存',
+    '已保存': '已儲存', '已删除「{n}」': '已刪除「{n}」', '已移入「{n}」': '已移入「{n}」',
+    '已解散文件夹「{n}」，网址回到桌面': '已解散資料夾「{n}」，網址回到桌面',
+    '请填写名称': '請填寫名稱', '请填写有效的网址': '請填寫有效的網址', '请填写文件夹名称': '請填寫資料夾名稱',
+    '正在更换壁纸…': '正在更換桌布…', '获取壁纸失败，请稍后再试': '取得桌布失敗，請稍後再試',
+    '已收藏当前壁纸': '已收藏目前桌布', '当前是内置壁纸，应用网络壁纸后可收藏': '目前是內建桌布，套用網路桌布後可收藏',
+    '已创建本地备份节点': '已建立本機備份節點', '已创建备份节点': '已建立備份節點',
+    '第 {n} 页': '第 {n} 頁', '已添加「{n}」': '已新增「{n}」',
+    '已移除「{n}」（引擎库中可随时重新启用）': '已移除「{n}」（引擎庫中可隨時重新啟用）',
+    '移除搜索引擎「{n}」？': '移除搜尋引擎「{n}」？', '引擎库中的引擎已全部启用': '引擎庫中的引擎已全部啟用',
+    '至少保留一个搜索引擎': '至少保留一個搜尋引擎', '已导入 {n} 个网址': '已匯入 {n} 個網址',
+    '已加载内置数据（{n} 个网站）': '已載入內建資料（{n} 個網站）',
+    '已推送到云端': '已推送到雲端', '已从云端拉取数据': '已從雲端拉取資料',
+    '尚未创建': '尚未建立', '从未': '從未', '当前数据仅保存在本机浏览器。': '目前資料僅儲存在本機瀏覽器。',
+    '恢复默认设置？网址与云同步配置会保留。': '還原預設設定？網址與雲端同步配置會保留。',
+    '加载项目内置数据？当前网址与外观设置会被覆盖（云同步配置保留）。': '載入內建資料？目前網址與外觀設定會被覆蓋（雲端同步配置保留）。',
+    '恢复到 {n} 的备份？当前数据会被覆盖。': '還原到 {n} 的備份？目前資料會被覆蓋。',
+    '壁纸源加载失败，请检查网络后点击「刷新」重试': '桌布來源載入失敗，請檢查網路後點「重新整理」重試',
+    '图片源加载失败，请检查网络后点「换一批」重試': '圖片來源載入失敗，請檢查網路後點「換一批」重試',
+    '图片源加载失败，请检查网络后点「换一批」重试': '圖片來源載入失敗，請檢查網路後點「換一批」重試',
+    '已开启每日自动更换必应壁纸': '已開啟每日自動更換必應桌布', '已关闭每日自动更换': '已關閉每日自動更換',
+    '已应用「{n}」，配置将自动同步': '已套用「{n}」，配置將自動同步',
+    '已还原默认设置': '已還原預設設定', '已恢复到 {n}': '已還原到 {n}',
+    '已创建云端 Gist（{n}），ID 已写入配置': '已建立雲端 Gist（{n}），ID 已寫入配置',
+    '初始化失败：': '初始化失敗：', '自定义壁纸': '自訂桌布',
+  },
+  en: {
+    '网页': 'Web', '图片': 'Images', '新闻': 'News', '视频': 'Videos', '地图': 'Maps',
+    '添加': 'Add', '设置': 'Settings', '搜索': 'Search', '删除': 'Delete', '恢复': 'Restore',
+    '输入并搜索': 'Search or type URL', '搜索网站': 'Search sites', '＋ 自定义': '＋ Custom', '全部': 'All',
+    '目标打开方式': 'Link opening', '在新标签页中打开网站': 'Open sites in new tab', '在新标签页中打开第三方搜索结果': 'Open third-party results in new tab',
+    '语言': 'Language', '语言选择': 'Language', '视图': 'View', '屏幕缩放': 'Page zoom', '翻页按钮': 'Page buttons',
+    '布局': 'Layout', '图标': 'Icons', '隐藏图标名称': 'Hide icon labels', '图标阴影': 'Icon shadow', '启动动画': 'Launch animation',
+    '图标圆角': 'Icon corner radius', '图标不透明度': 'Icon opacity', '图标大小': 'Icon size',
+    '搜索框': 'Search box', '隐藏搜索框': 'Hide search box', '显示搜索建议': 'Search suggestions', '保留搜索框内容': 'Keep search text',
+    '隐藏搜索类别': 'Hide search types', '显示搜索按钮': 'Show search button', '搜索框大小': 'Search box size', '搜索框圆角': 'Search box radius', '搜索框不透明度': 'Search box opacity',
+    '字体': 'Font', '字体阴影': 'Font shadow', '字体大小': 'Font size', '字体颜色': 'Font color',
+    '壁纸': 'Wallpaper', '自定义壁纸 URL': 'Custom wallpaper URL', '壁纸库（必应每日 / 随机美图）…': 'Wallpaper gallery (Bing daily / random)…',
+    '上传本地图片': 'Upload image', '每天自动更换必应壁纸': 'Bing wallpaper daily', '壁纸遮罩': 'Wallpaper dim', '壁纸模糊': 'Wallpaper blur',
+    '搜索引擎': 'Search engines', '点搜索框左侧 Logo 可快速切换；「添加」里可从引擎库启用内置引擎。': 'Click the logo left of the search box to switch; enable built-in engines from "Add".', '＋ 添加搜索引擎': '＋ Add search engine',
+    '动画': 'Animation', '作用于图标入场动画': 'Applies to the icon entrance animation',
+    '重置设置': 'Reset', '恢复默认外观与搜索设置；网址与云同步配置会保留。': 'Restore default appearance and search settings. Sites and cloud sync config are kept.', '还原设置': 'Restore',
+    '云同步': 'Cloud sync', '与其他设备保持同步': 'Sync with other devices', '上次同步时间': 'Last sync', '同步方式': 'Sync via',
+    '仅本地': 'Local only', 'Gitee Gist 云端': 'Gitee Gist cloud', 'GitHub Gist 云端': 'GitHub Gist cloud',
+    'Gitee 云端配置': 'Gitee cloud config', 'GitHub Gist 配置': 'GitHub Gist config', '访问令牌 Token': 'Access token', '数据文件名': 'Data filename',
+    '推送到云端': 'Push to cloud', '从云端拉取': 'Pull from cloud', '备份与恢复': 'Backup & restore', '立即备份': 'Back up now',
+    '导入': 'Import', '导出': 'Export', '内置数据': 'Built-in data', '编辑模式': 'Edit mode', '暂无备份节点': 'No snapshots yet',
+    '没有匹配的网站': 'No matching sites', '已添加': 'Added', '添加网址': 'Add site', '新建文件夹': 'New folder',
+    '这里空空如也，点击右上角菜单 → 「添加网址」开始使用': 'Nothing here yet. Open the menu at the top right, choose "Add site" to get started.',
+    '确定': 'OK', '取消': 'Cancel', '网站地址': 'Site URL', '网站名称': 'Site name', '选择图标': 'Choose icon',
+    '纯色图标': 'Letter tile', '本地图标': 'Local image', '编辑图标': 'Edit icon', '添加图标': 'Add icon',
+    '编辑文件夹': 'Edit folder', '文件夹': 'Folder',
+    '编辑壁纸': 'Edit wallpaper', '随机壁纸': 'Random wallpaper', '收藏当前壁纸': 'Save wallpaper', '下载当前壁纸': 'Download wallpaper',
+    '搜索图标': 'Find icons', '关于': 'About', '关于 Nav': 'About Nav',
+    '一个参照 inftab 风格的极简起始页。': 'A minimal start page inspired by inftab.',
+    '数据可保存在本机，也可通过 Gitee Gist 云端同步，走到哪用到哪。': 'Keep data locally, or sync it via Gitee / GitHub Gist and take it anywhere.',
+    '壁纸库': 'Gallery', '我的收藏': 'Favorites', '必应每日壁纸': 'Bing daily', '刷新': 'Refresh', '换一批': 'Shuffle',
+    '每天自动更换为最新必应壁纸': 'Auto-apply the latest Bing wallpaper daily', '加载中…': 'Loading…',
+    '添加搜索引擎': 'Add search engine', '从引擎库启用': 'Enable from catalog', '或添加自定义引擎': 'or add a custom engine',
+    '名称': 'Name', '网页搜索地址': 'Web search URL', '其他搜索类型地址（可选）': 'Other search type URLs (optional)', '保存': 'Save',
+    '已保存': 'Saved', '已删除「{n}」': 'Deleted "{n}"', '已移入「{n}」': 'Moved into "{n}"',
+    '已解散文件夹「{n}」，网址回到桌面': 'Folder "{n}" dissolved, sites are back on the desktop',
+    '请填写名称': 'Please enter a name', '请填写有效的网址': 'Please enter a valid URL', '请填写文件夹名称': 'Please enter a folder name',
+    '正在更换壁纸…': 'Changing wallpaper…', '获取壁纸失败，请稍后再试': 'Failed to fetch wallpaper, try again later',
+    '已收藏当前壁纸': 'Wallpaper saved to favorites', '当前是内置壁纸，应用网络壁纸后可收藏': 'Built-in wallpaper. Apply a web wallpaper first',
+    '已创建本地备份节点': 'Local backup snapshot created', '已创建备份节点': 'Backup snapshot created',
+    '第 {n} 页': 'Page {n}', '已添加「{n}」': 'Added "{n}"',
+    '已移除「{n}」（引擎库中可随时重新启用）': 'Removed "{n}" (can be re-enabled from the catalog)',
+    '移除搜索引擎「{n}」？': 'Remove search engine "{n}"?', '引擎库中的引擎已全部启用': 'All catalog engines are enabled',
+    '至少保留一个搜索引擎': 'Keep at least one search engine', '已导入 {n} 个网址': 'Imported {n} sites',
+    '已加载内置数据（{n} 个网站）': 'Loaded built-in data ({n} sites)',
+    '已推送到云端': 'Pushed to cloud', '已从云端拉取数据': 'Pulled from cloud',
+    '尚未创建': 'Not created yet', '从未': 'Never', '当前数据仅保存在本机浏览器。': 'Data is stored in this browser only.',
+    '恢复默认设置？网址与云同步配置会保留。': 'Restore default settings? Sites and cloud sync config are kept.',
+    '加载项目内置数据？当前网址与外观设置会被覆盖（云同步配置保留）。': 'Load built-in data? Current sites and appearance will be overwritten (cloud sync config is kept).',
+    '恢复到 {n} 的备份？当前数据会被覆盖。': 'Restore backup from {n}? Current data will be overwritten.',
+    '壁纸源加载失败，请检查网络后点击「刷新」重试': 'Failed to load wallpaper source. Check the network and hit Refresh',
+    '图片源加载失败，请检查网络后点「换一批」重试': 'Failed to load images. Check the network and hit Shuffle',
+    '已开启每日自动更换必应壁纸': 'Daily Bing wallpaper enabled', '已关闭每日自动更换': 'Daily Bing wallpaper disabled',
+    '已应用「{n}」，配置将自动同步': 'Applied "{n}", config will sync automatically',
+    '已还原默认设置': 'Default settings restored', '已恢复到 {n}': 'Restored backup from {n}',
+    '已创建云端 Gist（{n}），ID 已写入配置': 'Cloud Gist {n} created, ID saved to config',
+    '初始化失败：': 'Initialization failed: ', '自定义壁纸': 'Custom wallpaper',
+  },
+};
+/** 动态文案翻译（键为简体原文；支持 {n} 占位符） */
+function t(s) {
+  const args = Array.prototype.slice.call(arguments, 1);
+  const lang = state.data && state.data.settings ? state.data.settings.lang : 'zh';
+  const d = I18N[lang];
+  let out = (d && Object.prototype.hasOwnProperty.call(d, s)) ? d[s] : s;
+  args.forEach((v, i) => { out = out.split('{' + i + '}').join(String(v)); });
+  return out;
+}
+/** 静态 DOM 文案整体替换（可逆：WeakMap 记录每个节点的简体原文键；跳过站点名等用户数据区） */
+const i18nNodeKeys = new WeakMap();
+function applyI18n() {
+  const lang = state.data && state.data.settings ? state.data.settings.lang : 'zh';
+  const d = I18N[lang];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const el = node.parentElement;
+      if (!el || el.closest('#grid .label, #fvGrid .label, .dir-info, script, style, textarea')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node => {
+    if (!i18nNodeKeys.has(node)) {
+      const key = node.textContent.trim();
+      i18nNodeKeys.set(node, key);
+    }
+    const key = i18nNodeKeys.get(node);
+    if (!key) return;
+    node.textContent = (d && Object.prototype.hasOwnProperty.call(d, key)) ? d[key] : key;
+  });
+  $$('#searchInput[placeholder], #dirSearch[placeholder]').forEach(el => {
+    const k = el.getAttribute('placeholder');
+    if (k && Object.prototype.hasOwnProperty.call(d, k)) el.placeholder = d[k];
+  });
+}
+
 function tint(name) {
   const palette = ['#f2708a', '#5aa9e6', '#7fc8a9', '#e6a157', '#9b8ce0', '#59c3c3'];
   let h = 0;
@@ -113,6 +272,7 @@ function seedSettings() {
   return {
     engine: 'bing',
     searchType: 'html',
+    lang: 'zh',
     engines: seedEngines(),
     // 目标打开方式
     openSitesNewTab: true,
@@ -190,6 +350,7 @@ function normalizeSettings(s = {}) {
     });
   if (!out.engines.length) out.engines = def.engines;
   if (!TYPES.some(t => t.id === out.searchType)) out.searchType = def.searchType;
+  if (!['zh', 'zh-tw', 'en'].includes(out.lang)) out.lang = 'zh';
   if (!out.engines.some(e => e.id === out.engine)) out.engine = out.engines[0].id;
   delete out.engineByType; // 旧版字段
   if (!out.layout || typeof out.layout !== 'object') out.layout = { ...def.layout };
@@ -339,14 +500,14 @@ async function pushCloud(notify = true) {
   if (!cfg.gistId) {
     cfg.gistId = await adapter.create(cloudPayload());
     persistLocal();
-    toast(`已创建云端 Gist（${cfg.gistId}），ID 已写入配置`);
+    toast(t('已创建云端 Gist（{n}），ID 已写入配置', cfg.gistId));
     if (!$('#sidePanel').hidden) fillSyncDialog();
   }
   await adapter.save(cloudPayload());
   state.data.settings.lastSyncAt = Date.now();
   persistLocal();
   updateSyncStatus();
-  if (notify) toast('已推送到云端');
+  if (notify) toast(t('已推送到云端'));
 }
 
 async function pullCloud(notify = true) {
@@ -364,7 +525,7 @@ async function pullCloud(notify = true) {
   state.page = 0;
   persistLocal();
   renderAll();
-  if (notify) toast('已从云端拉取数据');
+  if (notify) toast(t('已从云端拉取数据'));
 }
 
 /* ================= 渲染 ================= */
@@ -448,7 +609,7 @@ function applyWallpaperUrl(url, title, closeDlg = true) {
   applyWallpaper();
   if (closeDlg) $('#dlgGallery').close();
   if (!$('#sidePanel').hidden) $('#wpUrl').value = url;
-  toast(`已应用「${title || '自定义壁纸'}」，配置将自动同步`);
+  toast(t('已应用「{n}」，配置将自动同步', title || t('自定义壁纸')));
 }
 
 /* ================= 壁纸右键菜单（对齐 inftab） ================= */
@@ -457,7 +618,7 @@ function currentWallpaperUrl() {
 }
 
 async function randomWallpaper() {
-  toast('正在更换壁纸…');
+  toast(t('正在更换壁纸…'));
   try {
     const list = await fetchBingFeed();
     let url = '', title = '';
@@ -470,19 +631,19 @@ async function randomWallpaper() {
     }
     if (!url) { toast('获取壁纸失败，请稍后再试', 'error'); return; }
     applyWallpaperUrl(url, title || '随机壁纸', false);
-  } catch { toast('获取壁纸失败，请稍后再试', 'error'); }
+  } catch { toast(t('获取壁纸失败，请稍后再试'), 'error'); }
 }
 
 function favoriteWallpaper() {
   const url = currentWallpaperUrl();
-  if (!url) { toast('当前是内置壁纸，应用网络壁纸后可收藏', 'error'); return; }
+  if (!url) { toast(t('当前是内置壁纸，应用网络壁纸后可收藏'), 'error'); return; }
   const s = state.data.settings;
   s.wallFavorites = s.wallFavorites || [];
   if (s.wallFavorites.some(x => x.url === url)) { toast('该壁纸已在收藏中'); return; }
   s.wallFavorites.unshift({ url, thumb: url, title: '收藏于 ' + new Date().toLocaleDateString() });
   s.wallFavorites = s.wallFavorites.slice(0, 12);
   persist();
-  toast('已收藏当前壁纸');
+  toast(t('已收藏当前壁纸'));
 }
 
 async function downloadWallpaper() {
@@ -505,7 +666,7 @@ function openWallMenu(e) {
   const m = $('#wallMenu');
   m.innerHTML = '';
   [
-    ['立即备份', () => { saveBackupNode(); toast('已创建本地备份节点'); }],
+    ['立即备份', () => { saveBackupNode(); toast(t('已创建本地备份节点')); }],
     ['编辑壁纸', () => { closePanel(); openPanel('settings'); setTimeout(() => $('#wpGrid').scrollIntoView({ block: 'center', behavior: 'smooth' }), 80); }],
     ['随机壁纸', () => randomWallpaper()],
     ['收藏当前壁纸', () => favoriteWallpaper()],
@@ -514,7 +675,7 @@ function openWallMenu(e) {
     ['关于', () => $('#dlgAbout').showModal()],
   ].forEach(([label, fn, sc]) => {
     const b = document.createElement('button');
-    b.innerHTML = escapeHtml(label) + (sc ? `<span class="sc">${sc}</span>` : '');
+    b.innerHTML = escapeHtml(t(label)) + (sc ? `<span class="sc">${sc}</span>` : '');
     b.addEventListener('click', () => { $('#wallMenu').hidden = true; fn(); });
     m.append(b);
   });
@@ -562,10 +723,10 @@ function renderFavWallpapers() {
 
 async function loadBingGallery() {
   const box = $('#bingGrid');
-  box.innerHTML = '<p class="hint">加载中…</p>';
+  box.innerHTML = '<p class="hint">' + t('加载中…') + '</p>';
   const list = await fetchBingFeed();
   box.innerHTML = '';
-  if (!list) { box.innerHTML = '<p class="hint">壁纸源加载失败，请检查网络后点击「刷新」重试</p>'; return; }
+  if (!list) { box.innerHTML = '<p class="hint">' + t('壁纸源加载失败，请检查网络后点击「刷新」重试') + '</p>'; return; }
   list.slice(0, 8).forEach(item => box.append(galItemEl(item)));
 }
 
@@ -578,7 +739,7 @@ async function loadPicsumGallery() {
     if (!list.length) throw new Error('empty');
     list.forEach(item => box.append(galItemEl(item)));
   } catch {
-    box.innerHTML = '<p class="hint">图片源加载失败，请检查网络后点「换一批」重试</p>';
+    box.innerHTML = '<p class="hint">' + t('图片源加载失败，请检查网络后点「换一批」重试') + '</p>';
   }
 }
 
@@ -726,7 +887,7 @@ function folderTileHTML(entry) {
 function addFolderEl() {
   const a = document.createElement('a');
   a.className = 'card add-card';
-  a.innerHTML = `<span class="icon">${SVG_FOLDER}</span><span class="label">新建文件夹</span>`;
+  a.innerHTML = `<span class="icon">${SVG_FOLDER}</span><span class="label">${t('新建文件夹')}</span>`;
   a.addEventListener('click', e => { e.preventDefault(); openSiteDialog(null, { folder: true }); });
   return a;
 }
@@ -739,13 +900,13 @@ function moveSiteToFolder(siteId, folderId) {
   site.parent = folderId;
   persist();
   renderGrid();
-  toast(`已移入「${folder.name}」`);
+  toast(t('已移入「{n}」', folder.name));
 }
 
 function addCardEl() {
   const a = document.createElement('a');
   a.className = 'card add-card';
-  a.innerHTML = `<span class="icon">${SVG_PLUS}</span><span class="label">添加网址</span>`;
+  a.innerHTML = `<span class="icon">${SVG_PLUS}</span><span class="label">${t('添加网址')}</span>`;
   a.addEventListener('click', e => { e.preventDefault(); openSiteDialog(null); });
   return a;
 }
@@ -769,7 +930,7 @@ function renderGrid() {
   grid.classList.toggle('hide-labels', !!state.data.settings.hideIconName);
   grid.innerHTML = '';
   if (!slice.length && state.page === 0 && !state.editMode) {
-    grid.innerHTML = '<p class="empty-tip">这里空空如也，点击右上角菜单 → 「添加网址」开始使用</p>';
+    grid.innerHTML = '<p class="empty-tip">' + t('这里空空如也，点击右上角菜单 → 「添加网址」开始使用') + '</p>';
   } else {
     slice.forEach((s, i) => grid.append(cardEl(s, i)));
     if (state.editMode && state.page === 0) { grid.append(addCardEl()); grid.append(addFolderEl()); }
@@ -780,7 +941,7 @@ function renderGrid() {
     const d = document.createElement('button');
     d.type = 'button';
     d.className = 'dot' + (i === state.page ? ' active' : '');
-    d.title = `第 ${i + 1} 页`;
+    d.title = t('第 {n} 页', i + 1);
     d.addEventListener('click', () => { state.page = i; renderGrid(); });
     if (state.editMode) {
       d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('active'); });
@@ -795,9 +956,11 @@ function renderGrid() {
   $('#gridNext').hidden = state.page >= state.pages - 1;
 
   hydrateIdbIcons(grid);
+  applyI18n();
 }
 
 function renderAll() {
+  applyI18n();
   renderTypeTabs();
   updateSearchUI();
   applyWallpaper();
@@ -844,14 +1007,14 @@ function removeSite(entry) {
     if (state.openFolderId === entry.id) closeFolder();
     persist();
     renderGrid();
-    toast(`已解散文件夹「${entry.name}」，网址回到桌面`);
+    toast(t('已解散文件夹「{n}」，网址回到桌面', entry.name));
     return;
   }
   state.data.sites = state.data.sites.filter(s => s.id !== entry.id);
   persist();
   renderGrid();
   if (state.openFolderId) renderFolderView();
-  toast(`已删除「${entry.name}」`);
+  toast(t('已删除「{n}」', entry.name));
 }
 
 /* ================= 文件夹浮层（对齐 iOS 点开文件夹） ================= */
@@ -889,7 +1052,7 @@ function renderFolderView() {
   });
   const add = document.createElement('a');
   add.className = 'fv-item fv-add';
-  add.innerHTML = `<span class="icon">${SVG_PLUS}</span><span class="label">添加</span>`;
+  add.innerHTML = `<span class="icon">${SVG_PLUS}</span><span class="label">${t('添加')}</span>`;
   add.addEventListener('click', e => { e.preventDefault(); openSiteDialog(null, { parent: f.id }); });
   box.append(add);
   hydrateIdbIcons(box);
@@ -901,7 +1064,7 @@ function openSiteDialog(site, opts = {}) {
   state.editingId = site ? site.id : null;
   state.editingFolder = folder;
   state.editingParent = !site && !folder && opts.parent ? opts.parent : '';
-  $('#editDlgTitle').textContent = folder ? (site ? '编辑文件夹' : '新建文件夹') : (site ? '编辑图标' : '添加图标');
+  $('#editDlgTitle').textContent = folder ? (site ? t('编辑文件夹') : t('新建文件夹')) : (site ? t('编辑图标') : t('添加图标'));
   $('#editUrl').value = site && site.url ? site.url : '';
   $('#editName').value = site ? site.name : '';
   $('#editFormError').hidden = true;
@@ -986,7 +1149,7 @@ function saveSiteDialog() {
   const name = $('#editName').value.trim();
   const err = $('#editFormError');
   if (state.editingFolder) {
-    if (!name) { err.textContent = '请填写文件夹名称'; err.hidden = false; return; }
+    if (!name) { err.textContent = t('请填写文件夹名称'); err.hidden = false; return; }
     if (state.editingId) {
       const f = pickSite();
       if (f) f.name = name;
@@ -996,12 +1159,12 @@ function saveSiteDialog() {
     persist();
     closeSiteDialog();
     renderGrid();
-    toast('已保存');
+    toast(t('已保存'));
     return;
   }
   const url = normalizeUrl($('#editUrl').value);
   if (!name || !url) {
-    err.textContent = !name ? '请填写名称' : '请填写有效的网址';
+    err.textContent = !name ? t('请填写名称') : t('请填写有效的网址');
     err.hidden = false;
     return;
   }
@@ -1104,6 +1267,7 @@ function fillSettingsPane() {
   $('#rgFontSizeVal').textContent = String(s.fontSize);
   $('#tgHideSearchBtn').checked = s.searchHideBtn;
   renderEaseCards();
+  $('#selLang').value = s.lang || 'zh';
   $('#rgWallOpacity').value = s.wallOpacity;
   $('#rgWallOpacityVal').textContent = s.wallOpacity + '%';
   $('#rgWallBlur').value = s.wallBlur;
@@ -1214,13 +1378,13 @@ function resolveEngine() {
 function renderTypeTabs() {
   const tabs = $('#engineTabs');
   tabs.innerHTML = '';
-  TYPES.forEach(t => {
+  TYPES.forEach(ty => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = t.name;
-    b.className = t.id === state.data.settings.searchType ? 'active' : '';
+    b.textContent = t(ty.name);
+    b.className = ty.id === state.data.settings.searchType ? 'active' : '';
     b.onclick = () => {
-      state.data.settings.searchType = t.id;
+      state.data.settings.searchType = ty.id;
       persist();
       renderTypeTabs();
       hideSug();
@@ -1266,7 +1430,7 @@ function renderEngineMenu() {
   const add = document.createElement('button');
   add.type = 'button';
   add.className = 'eng-pick add';
-  add.innerHTML = `<span class="eng-glyph plus">${SVG_PLUS}</span><span class="eng-name">添加</span>`;
+  add.innerHTML = `<span class="eng-glyph plus">${SVG_PLUS}</span><span class="eng-name">${t('添加')}</span>`;
   add.onclick = () => { toggleEngineMenu(false); openEngineDialog(null); };
   m.append(add);
 }
@@ -1474,7 +1638,7 @@ function bindSettingsDialog() {
     state.data.settings.bingDaily = e.target.checked;
     $('#optBingDaily').checked = e.target.checked;
     persist();
-    toast(e.target.checked ? '已开启每日自动更换必应壁纸' : '已关闭每日自动更换');
+    toast(e.target.checked ? t('已开启每日自动更换必应壁纸') : t('已关闭每日自动更换'));
   });
   $('#optBingDaily').addEventListener('change', e => {
     state.data.settings.bingDaily = e.target.checked;
@@ -1501,6 +1665,13 @@ function bindSettingsDialog() {
       persistLocal();
     });
   };
+  $('#selLang').addEventListener('change', e => {
+    state.data.settings.lang = e.target.value;
+    persist();
+    renderTypeTabs();
+    renderGrid();
+    applyI18n();
+  });
   bind('tgSitesNewTab', 'openSitesNewTab', renderGrid);
   bind('tgSearchNewTab', 'openSearchNewTab');
   bindRange('rgScale', 'rgScaleVal', 'pageScale', applyAppearance);
@@ -1549,7 +1720,7 @@ function bindSettingsDialog() {
 
   // 还原设置
   $('#btnResetSettings').addEventListener('click', () => {
-    if (!confirm('恢复默认设置？网址与云同步配置会保留。')) return;
+    if (!confirm(t('恢复默认设置？网址与云同步配置会保留。'))) return;
     saveBackupNode();
     const cur = state.data.settings;
     const keepSync = cur.sync;
@@ -1558,7 +1729,7 @@ function bindSettingsDialog() {
     persist();
     renderAll();
     openPanel('settings');
-    toast('已还原默认设置');
+    toast(t('已还原默认设置'));
   });
 }
 
@@ -1617,14 +1788,14 @@ function renderEngineList() {
 
 function removeEngine(engine) {
   const s = state.data.settings;
-  if (s.engines.length <= 1) { toast('至少保留一个搜索引擎', 'error'); return; }
-  if (!confirm(`移除搜索引擎「${engine.name}」？`)) return;
+  if (s.engines.length <= 1) { toast(t('至少保留一个搜索引擎'), 'error'); return; }
+  if (!confirm(t('移除搜索引擎「{n}」？', engine.name))) return;
   s.engines = s.engines.filter(x => x.id !== engine.id);
   if (s.engine === engine.id) s.engine = s.engines[0].id;
   persist();
   renderEngineList();
   updateSearchUI();
-  toast(`已移除「${engine.name}」（引擎库中可随时重新启用）`);
+  toast(t('已移除「{n}」（引擎库中可随时重新启用）', engine.name));
 }
 
 function openEngineDialog(engine) {
@@ -1661,11 +1832,11 @@ function renderEngineCatalog() {
       renderEngineCatalog();
       renderEngineList();
       updateSearchUI();
-      toast(`已启用「${c.name}」`);
+      toast(t('已添加「{n}」', c.name));
     };
     box.append(b);
   });
-  if (!box.children.length) box.innerHTML = '<p class="hint">引擎库中的引擎已全部启用</p>';
+  if (!box.children.length) box.innerHTML = '<p class="hint">' + t('引擎库中的引擎已全部启用') + '</p>';
 }
 
 function bindEngineDialog() {
@@ -1694,7 +1865,7 @@ function bindEngineDialog() {
     $('#dlgEngine').close();
     renderEngineList();
     updateSearchUI();
-    toast('搜索引擎已保存');
+    toast(t('已保存'));
   });
 }
 
@@ -1740,22 +1911,24 @@ function updateSyncStatus() {
   if (!el) return;
   const s = state.data.settings;
   if (!isGistType(s.sync.type)) {
-    el.textContent = '当前数据仅保存在本机浏览器。';
+    el.textContent = t('当前数据仅保存在本机浏览器。');
     return;
   }
   const platform = s.sync.type === 'github-gist' ? 'GitHub' : 'Gitee';
-  el.textContent = `${platform} Gist：${s.sync.gistId || '尚未创建'}　上次同步：${s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString() : '从未'}`;
+  el.textContent = `${platform} Gist：${s.sync.gistId || t('尚未创建')}　${t('上次同步')}：${s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString() : t('从未')}`;
 }
 
 function renderBackups() {
   const list = $('#backupList');
   const arr = getBackups();
   list.innerHTML = '';
-  if (!arr.length) { list.innerHTML = '<li><span class="bt">暂无备份节点</span></li>'; return; }
+  if (!arr.length) { list.innerHTML = '<li><span class="bt">' + t('暂无备份节点') + '</span></li>'; return; }
   arr.forEach((b, i) => {
     const li = document.createElement('li');
     li.innerHTML = '<span class="bt">' + new Date(b.t).toLocaleString() + '</span>' +
       '<button type="button" class="btn">恢复</button><button type="button" class="btn">删除</button>';
+    li.querySelectorAll('button')[0].textContent = t('恢复');
+    li.querySelectorAll('button')[1].textContent = t('删除');
     const [btnRestore, btnDel] = li.querySelectorAll('button');
     btnRestore.addEventListener('click', () => restoreBackup(i));
     btnDel.addEventListener('click', () => {
@@ -1771,7 +1944,7 @@ function restoreBackup(i) {
   const arr = getBackups();
   const b = arr[i];
   if (!b) return;
-  if (!confirm('恢复到 ' + new Date(b.t).toLocaleString() + ' 的备份？当前数据会被覆盖。')) return;
+  if (!confirm(t('恢复到 {n} 的备份？当前数据会被覆盖。', new Date(b.t).toLocaleString()))) return;
   saveBackupNode();
   const keepSync = state.data.settings.sync;
   state.data = {
@@ -1783,14 +1956,14 @@ function restoreBackup(i) {
   persist();
   renderAll();
   renderBackups();
-  toast('已恢复到 ' + new Date(b.t).toLocaleString());
+  toast(t('已恢复到 {n}', new Date(b.t).toLocaleString()));
 }
 
 function bindSyncDialog() {
   $('#btnBackupNow').addEventListener('click', () => {
     saveBackupNode();
     renderBackups();
-    toast('已创建备份节点');
+    toast(t('已创建备份节点'));
   });
   $('#syncType').addEventListener('change', () => updateSyncBrandUI($('#syncType').value));
   $('#syncPull').addEventListener('click', async () => {
@@ -1841,7 +2014,7 @@ function bindImport() {
         state.page = 0;
         persist();
         renderAll();
-        toast(`已导入 ${state.data.sites.length} 个网址`);
+        toast(t('已导入 {n} 个网址', state.data.sites.length));
       } catch (err) { toast('导入失败：' + err.message, 'error'); }
     };
     reader.readAsText(file, 'utf-8');
@@ -2010,7 +2183,7 @@ function renderDirCats() {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'dir-cat' + (cat === dirCat && !dirQ ? ' active' : '');
-    b.textContent = cat;
+    b.textContent = t(cat);
     b.onclick = () => { dirCat = cat; dirQ = ''; $('#dirSearch').value = ''; renderDirCats(); renderDirList(); };
     box.append(b);
   });
@@ -2028,21 +2201,21 @@ function renderDirList() {
     });
   });
   box.innerHTML = '';
-  if (!entries.length) { box.innerHTML = '<p class="dir-empty">没有匹配的网站</p>'; return; }
+  if (!entries.length) { box.innerHTML = '<p class="dir-empty">' + t('没有匹配的网站') + '</p>'; return; }
   entries.forEach(([name, url]) => {
     const added = existing.has(url);
     const card = document.createElement('div');
     card.className = 'dir-card';
     card.innerHTML = `<span class="dir-icon">${dirIconHTML([name, url])}</span>
       <span class="dir-info"><b>${escapeHtml(name)}</b><i>${escapeHtml(url.replace(/^https?:\/\//, ''))}</i></span>
-      <button type="button" class="dir-add" ${added ? 'disabled' : ''}>${added ? '已添加' : '添加'}</button>`;
+      <button type="button" class="dir-add" ${added ? 'disabled' : ''}>${added ? t('已添加') : t('添加')}</button>`;
     card.querySelector('.dir-add').addEventListener('click', e => {
       state.data.sites.push({ id: uid(), name, url, icon: '', badge: false });
       persist();
       e.target.disabled = true;
-      e.target.textContent = '已添加';
+      e.target.textContent = t('已添加');
       renderGrid();
-      toast(`已添加「${name}」`);
+      toast(t('已添加「{n}」', name));
     });
     box.append(card);
   });
@@ -2118,7 +2291,7 @@ function bindDirectory() {
 
 /** 加载项目内置数据（data/default-data.json），覆盖当前站点与外观 */
 async function loadDefaultData() {
-  if (!confirm('加载项目内置数据？当前网址与外观设置会被覆盖（云同步配置保留）。')) return;
+  if (!confirm(t('加载项目内置数据？当前网址与外观设置会被覆盖（云同步配置保留）。'))) return;
   try {
     const r = await fetch('data/default-data.json');
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -2134,7 +2307,7 @@ async function loadDefaultData() {
     state.page = 0;
     persist();
     renderAll();
-    toast(`已加载内置数据（${state.data.sites.length} 个网站）`);
+    toast(t('已加载内置数据（{n} 个网站）', state.data.sites.length));
   } catch (e) { toast('加载失败：' + e.message, 'error'); }
 }
 
@@ -2166,4 +2339,4 @@ async function init() {
   maybeAutoBingDaily().catch(() => {});
 }
 
-init().catch(err => toast('初始化失败：' + err.message, 'error'));
+init().catch(err => toast(t('初始化失败：') + err.message, 'error'));
