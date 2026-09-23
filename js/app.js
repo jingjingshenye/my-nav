@@ -165,6 +165,7 @@ function seedSettings() {
     // 壁纸
     wallpaper: 'preset:forest',
     customWallpaper: '',
+    wallFavorites: [],
     bingDaily: false,
     bingDate: '',
     lastSyncAt: null,
@@ -361,7 +362,7 @@ async function pullCloud(notify = true) {
     version: 1,
     sites: payload.sites.map(s => ({
       id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
-      icon: s.icon || '', badge: !!s.badge,
+      icon: s.icon || '', avatar: !!s.avatar, badge: !!s.badge,
     })),
     settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync },
   };
@@ -455,11 +456,112 @@ function applyWallpaperUrl(url, title, closeDlg = true) {
   toast(`已应用「${title || '自定义壁纸'}」，配置将自动同步`);
 }
 
+/* ================= 壁纸右键菜单（对齐 inftab） ================= */
+function currentWallpaperUrl() {
+  return state.data.settings.customWallpaper || '';
+}
+
+async function randomWallpaper() {
+  toast('正在更换壁纸…');
+  try {
+    const list = await fetchBingFeed();
+    let url = '', title = '';
+    if (list) {
+      const p = list[Math.floor(Math.random() * list.length)];
+      url = p.url; title = p.title;
+    } else {
+      const d = await fetchJSON('https://picsum.photos/v2/list?page=' + (1 + Math.floor(Math.random() * 40)) + '&limit=1').catch(() => null);
+      if (d && d[0]) { url = `https://picsum.photos/id/${d[0].id}/1920/1080`; title = d[0].author; }
+    }
+    if (!url) { toast('获取壁纸失败，请稍后再试', 'error'); return; }
+    applyWallpaperUrl(url, title || '随机壁纸', false);
+  } catch { toast('获取壁纸失败，请稍后再试', 'error'); }
+}
+
+function favoriteWallpaper() {
+  const url = currentWallpaperUrl();
+  if (!url) { toast('当前是内置壁纸，应用网络壁纸后可收藏', 'error'); return; }
+  const s = state.data.settings;
+  s.wallFavorites = s.wallFavorites || [];
+  if (s.wallFavorites.some(x => x.url === url)) { toast('该壁纸已在收藏中'); return; }
+  s.wallFavorites.unshift({ url, thumb: url, title: '收藏于 ' + new Date().toLocaleDateString() });
+  s.wallFavorites = s.wallFavorites.slice(0, 12);
+  persist();
+  toast('已收藏当前壁纸');
+}
+
+async function downloadWallpaper() {
+  const url = currentWallpaperUrl();
+  if (!url) { toast('当前是内置壁纸，无需下载', 'error'); return; }
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'wallpaper-' + Date.now() + '.jpg';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('已开始下载当前壁纸');
+  } catch { window.open(url, '_blank', 'noopener'); }
+}
+
+function openWallMenu(e) {
+  const m = $('#wallMenu');
+  m.innerHTML = '';
+  [
+    ['立即备份', () => { saveBackupNode(); toast('已创建本地备份节点'); }],
+    ['编辑壁纸', () => { closePanel(); openPanel('settings'); setTimeout(() => $('#wpGrid').scrollIntoView({ block: 'center', behavior: 'smooth' }), 80); }],
+    ['随机壁纸', () => randomWallpaper()],
+    ['收藏当前壁纸', () => favoriteWallpaper()],
+    ['下载当前壁纸', () => downloadWallpaper()],
+    ['搜索图标', () => openIconFind(), 'Ctrl + F'],
+  ].forEach(([label, fn, sc]) => {
+    const b = document.createElement('button');
+    b.innerHTML = escapeHtml(label) + (sc ? `<span class="sc">${sc}</span>` : '');
+    b.addEventListener('click', () => { $('#wallMenu').hidden = true; fn(); });
+    m.append(b);
+  });
+  m.hidden = false;
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.min(e.clientX, innerWidth - r.width - 8) + 'px';
+  m.style.top = Math.min(e.clientY, innerHeight - r.height - 8) + 'px';
+}
+
+/* ================= 搜索图标浮层（Ctrl + F，对齐 inftab） ================= */
+function openIconFind() {
+  $('#iconFind').hidden = false;
+  const inp = $('#iconFindInput');
+  inp.value = '';
+  filterCards('');
+  setTimeout(() => inp.focus(), 30);
+}
+
+function closeIconFind() {
+  $('#iconFind').hidden = true;
+  $('#iconFindInput').value = '';
+  filterCards('');
+}
+
+function filterCards(q) {
+  q = q.trim().toLowerCase();
+  $$('#grid .card').forEach(c => c.classList.toggle('find-hide', !!q && !c.textContent.toLowerCase().includes(q)));
+}
+
 function openGallery() {
   $('#optDailyApply').checked = !!state.data.settings.bingDaily;
+  renderFavWallpapers();
   $('#dlgGallery').showModal();
   loadBingGallery();
   loadPicsumGallery();
+}
+
+function renderFavWallpapers() {
+  const favs = state.data.settings.wallFavorites || [];
+  $('#favSection').hidden = !favs.length;
+  const box = $('#favGrid');
+  box.innerHTML = '';
+  favs.forEach(item => box.append(galItemEl(item)));
 }
 
 async function loadBingGallery() {
@@ -517,10 +619,31 @@ function iconSources(site) {
 function iconHTML(site) {
   // 字母头像垫底，真实图标加载成功后盖在上面；全部源失败时移除 img 只留头像
   const ph = `<span class="ph" style="background:${tint(site.name)}">${escapeHtml((site.name || '•')[0])}</span>`;
+  if (site.avatar) return ph; // 用户明确选择「纯色图标」
+  if (site.icon && site.icon.startsWith('idb:')) {
+    // 本地上传图标：src 由 hydrateIdbIcons 从 IndexedDB 异步填充
+    return `${ph}<img data-idbkey="${escapeHtml(site.icon.slice(4))}" alt="" draggable="false">`;
+  }
   if (site.icon) return `${ph}<img src="${escapeHtml(site.icon)}" alt="" loading="lazy" draggable="false">`;
   const sources = iconSources(site);
   if (!sources.length) return ph;
   return `${ph}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" alt="" loading="lazy" draggable="false">`;
+}
+
+// 本地图标 blob -> objectURL 缓存
+const idbIconUrls = new Map();
+async function hydrateIdbIcons(root) {
+  for (const img of root.querySelectorAll('img[data-idbkey]')) {
+    const key = img.dataset.idbkey;
+    try {
+      if (!idbIconUrls.has(key)) {
+        const blob = await idbGet(key);
+        if (!blob) { img.remove(); continue; }
+        idbIconUrls.set(key, URL.createObjectURL(blob));
+      }
+      img.src = idbIconUrls.get(key);
+    } catch { img.remove(); }
+  }
 }
 
 function cardEl(site, idx = 0) {
@@ -569,7 +692,12 @@ function cardEl(site, idx = 0) {
     });
   }
 
-  a.addEventListener('contextmenu', e => { e.preventDefault(); openCtxMenu(e, site); });
+  // 对齐 inftab：右键图标进入编辑状态（×标记）；已在编辑状态时右键 = 直接打开编辑面板
+  a.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (!state.editMode) setEditMode(true);
+    else openSiteDialog(site);
+  });
   const del = $('.del', a);
   if (del) del.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); removeSite(site); });
   return a;
@@ -626,6 +754,8 @@ function renderGrid() {
   // 翻页箭头
   $('#gridPrev').hidden = state.page <= 0;
   $('#gridNext').hidden = state.page >= state.pages - 1;
+
+  hydrateIdbIcons(grid);
 }
 
 function renderAll() {
@@ -668,76 +798,134 @@ function moveToPage(id, pageIndex) {
 }
 
 function removeSite(site) {
-  if (!confirm(`确定删除「${site.name}」吗？`)) return;
   state.data.sites = state.data.sites.filter(s => s.id !== site.id);
   persist();
   renderGrid();
   toast(`已删除「${site.name}」`);
 }
 
-/* ================= 站点编辑对话框 ================= */
+/* ================= 编辑图标侧边面板（对齐 inftab） ================= */
 function openSiteDialog(site) {
   state.editingId = site ? site.id : null;
-  $('#siteDlgTitle').textContent = site ? '编辑网址' : '添加网址';
-  const f = $('#siteForm');
-  f.name.value = site ? site.name : '';
-  f.url.value = site ? site.url : '';
-  f.icon.value = site ? site.icon : '';
-  f.badge.checked = site ? !!site.badge : false;
-  $('#siteFormError').hidden = true;
-  $('#dlgSite').showModal();
-  f.name.focus();
+  $('#editDlgTitle').textContent = site ? '编辑图标' : '添加图标';
+  $('#editUrl').value = site ? site.url : '';
+  $('#editName').value = site ? site.name : '';
+  $('#editFormError').hidden = true;
+  if (site && site.icon && site.icon.startsWith('idb:')) Object.assign(editIcon, { mode: 'idb', url: '', idbKey: site.icon.slice(4) });
+  else if (site && site.icon) Object.assign(editIcon, { mode: 'url', url: site.icon, idbKey: '' });
+  else Object.assign(editIcon, { mode: 'auto', url: '', idbKey: '' });
+  renderIconPick(site);
+  $('#editMask').hidden = false;
+  $('#editPanel').hidden = false;
+  $('#editUrl').focus();
 }
 
-function bindSiteDialog() {
-  const f = $('#siteForm');
-  f.addEventListener('submit', e => {
-    e.preventDefault();
-    const name = f.name.value.trim();
-    const url = normalizeUrl(f.url.value);
-    if (!name || !url) {
-      const err = $('#siteFormError');
-      err.textContent = !name ? '请填写名称' : '请填写有效的网址';
-      err.hidden = false;
-      return;
-    }
-    const icon = f.icon.value.trim();
-    const badge = f.badge.checked;
-    if (state.editingId) {
-      const site = state.data.sites.find(s => s.id === state.editingId);
-      if (site) Object.assign(site, { name, url, icon, badge });
-    } else {
-      state.data.sites.push({ id: uid(), name, url, icon, badge });
-    }
-    persist();
-    $('#dlgSite').close();
-    renderGrid();
-  });
+function closeSiteDialog() {
+  $('#editMask').hidden = true;
+  $('#editPanel').hidden = true;
 }
 
-/* ================= 右键菜单 ================= */
-function openCtxMenu(e, site) {
-  const m = $('#ctxMenu');
-  m.innerHTML = '';
-  const items = [
-    ['编辑', () => openSiteDialog(site)],
-    [site.badge ? '关闭红点提醒' : '开启红点提醒', () => { site.badge = !site.badge; persist(); renderGrid(); }],
-    null,
-    ['删除', () => removeSite(site), 'danger'],
-  ];
-  items.forEach(it => {
-    if (!it) { m.append(document.createElement('hr')); return; }
-    const [label, fn, cls] = it;
+// 面板打开期间的图标选择状态：auto=自动获取 / avatar=纯色图标 / url=候选图标 / idb=本地上传
+const editIcon = { mode: 'auto', url: '', idbKey: '' };
+
+function pickSite() {
+  return state.editingId ? state.data.sites.find(s => s.id === state.editingId) : null;
+}
+
+function renderIconPick() {
+  const site = pickSite();
+  const box = $('#iconPick');
+  box.innerHTML = '';
+  const tile = (label, inner) => {
     const b = document.createElement('button');
-    b.textContent = label;
-    if (cls) b.className = cls;
-    b.addEventListener('click', () => { m.hidden = true; fn(); });
-    m.append(b);
+    b.type = 'button';
+    b.className = 'pick';
+    b.innerHTML = `<span class="pick-img">${inner}</span><span class="pick-cap">${label}</span>`;
+    box.append(b);
+    return b;
+  };
+  const markOn = (el, removable) => {
+    el.classList.add('on');
+    if (!removable) return;
+    const x = document.createElement('i');
+    x.className = 'pick-x';
+    x.title = '移除该图标，恢复自动获取';
+    x.textContent = '×';
+    x.addEventListener('click', e => {
+      e.stopPropagation();
+      Object.assign(editIcon, { mode: 'auto', url: '', idbKey: '' });
+      renderIconPick();
+    });
+    el.append(x);
+  };
+  // 纯色图标：名称前两字色块（对齐 inftab）
+  const name = $('#editName').value.trim() || (site ? site.name : '');
+  const av = tile('纯色图标', `<span class="ph-tile" style="background:${tint(name)}">${escapeHtml(name.slice(0, 2) || '•')}</span>`);
+  av.addEventListener('click', () => { Object.assign(editIcon, { mode: 'avatar', url: '', idbKey: '' }); renderIconPick(); });
+  if (editIcon.mode === 'avatar') markOn(av, false);
+  // 自动抓取的候选图标：图标01 / 图标02（选境内可达的源，避免候选空白）
+  const sources = site ? iconSources(site) : [];
+  [sources[0], sources[3]].filter(Boolean).forEach((src, i) => {
+    const b = tile(`图标0${i + 1}`, `<img src="${escapeHtml(src)}" alt="" draggable="false">`);
+    b.addEventListener('click', () => { Object.assign(editIcon, { mode: 'url', url: src, idbKey: '' }); renderIconPick(); });
+    if (editIcon.mode === 'url' && editIcon.url === src) markOn(b, true);
   });
-  m.hidden = false;
-  const r = m.getBoundingClientRect();
-  m.style.left = Math.min(e.clientX, innerWidth - r.width - 8) + 'px';
-  m.style.top = Math.min(e.clientY, innerHeight - r.height - 8) + 'px';
+  // 本地图标：展示当前上传图标；点击可上传/更换
+  const local = tile('本地图标', '<span class="pick-plus">＋</span>');
+  local.addEventListener('click', () => $('#iconFile').click());
+  if (editIcon.mode === 'idb') {
+    markOn(local, true);
+    idbGet(editIcon.idbKey).then(blob => {
+      if (!blob) return;
+      if (!idbIconUrls.has(editIcon.idbKey)) idbIconUrls.set(editIcon.idbKey, URL.createObjectURL(blob));
+      const img = local.querySelector('.pick-img');
+      if (img) img.innerHTML = `<img src="${idbIconUrls.get(editIcon.idbKey)}" alt="" draggable="false">`;
+    }).catch(() => {});
+  }
+}
+
+function saveSiteDialog() {
+  const name = $('#editName').value.trim();
+  const url = normalizeUrl($('#editUrl').value);
+  const err = $('#editFormError');
+  if (!name || !url) {
+    err.textContent = !name ? '请填写名称' : '请填写有效的网址';
+    err.hidden = false;
+    return;
+  }
+  const icon = editIcon.mode === 'url' ? editIcon.url : (editIcon.mode === 'idb' ? 'idb:' + editIcon.idbKey : '');
+  const avatar = editIcon.mode === 'avatar';
+  if (state.editingId) {
+    const site = pickSite();
+    if (site) Object.assign(site, { name, url, icon, avatar });
+  } else {
+    state.data.sites.push({ id: uid(), name, url, icon, avatar, badge: false });
+  }
+  persist();
+  closeSiteDialog();
+  renderGrid();
+  toast('已保存');
+}
+
+function bindSitePanel() {
+  $('#editOk').addEventListener('click', saveSiteDialog);
+  $('#editCancel').addEventListener('click', closeSiteDialog);
+  $('#editPanelClose').addEventListener('click', closeSiteDialog);
+  $('#editMask').addEventListener('click', closeSiteDialog);
+  // 名称变化时同步纯色图标文字与配色
+  $('#editName').addEventListener('input', () => { if (editIcon.mode === 'avatar') renderIconPick(); });
+  $('#iconFile').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { toast('图标图片请小于 2MB', 'error'); return; }
+    const key = 'icon-' + Date.now();
+    try {
+      await idbPut(key, f);
+      Object.assign(editIcon, { mode: 'idb', url: '', idbKey: key });
+      renderIconPick();
+    } catch { toast('图标保存失败', 'error'); }
+  });
 }
 
 function applyAppearance() {
@@ -1080,32 +1268,22 @@ function flipPage(delta) {
 function bindTopMenu() {
   $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); openPanel('add'); });
   $('#logo').addEventListener('click', () => $('#dlgAbout').showModal());
-  $('#btnRandomWall').addEventListener('click', async e => {
-    const btn = e.currentTarget;
-    btn.disabled = true;
-    toast('正在更换壁纸…');
-    try {
-      const list = await fetchBingFeed();
-      let url = '', title = '';
-      if (list) {
-        const p = list[Math.floor(Math.random() * list.length)];
-        url = p.url; title = p.title;
-      } else {
-        const d = await fetchJSON('https://picsum.photos/v2/list?page=' + (1 + Math.floor(Math.random() * 40)) + '&limit=1').catch(() => null);
-        if (d && d[0]) { url = `https://picsum.photos/id/${d[0].id}/1920/1080`; title = d[0].author; }
-      }
-      if (!url) { toast('获取壁纸失败，请稍后再试', 'error'); return; }
-      applyWallpaperUrl(url, title || '随机壁纸', false);
-    } finally {
-      btn.disabled = false;
-    }
-  });
+  $('#btnRandomWall').addEventListener('click', () => randomWallpaper());
 
   document.addEventListener('click', e => {
     if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
-    if (!$('#ctxMenu').hidden && !$('#ctxMenu').contains(e.target)) $('#ctxMenu').hidden = true;
+    if (!$('#wallMenu').hidden && !$('#wallMenu').contains(e.target)) $('#wallMenu').hidden = true;
+    // 对齐 inftab：编辑状态下点击其他地方（非图标/面板/控件）即退出编辑
+    if (state.editMode && !e.target.closest('.card, .edit-panel, #dirMask, #sidePanel, dialog, .dots, .round-btn, #btnMenu, #logo, .iconfind-mask')) setEditMode(false);
   });
-  addEventListener('blur', () => { toggleEngineMenu(false); $('#ctxMenu').hidden = true; });
+  // 对齐 inftab：右键空白处弹出壁纸菜单（图标上的右键在 cardEl 内处理）
+  document.addEventListener('contextmenu', e => {
+    if (e.target.closest('.card, .edit-panel, #sidePanel, dialog, input, textarea, select, .engine-menu, .sug-drop, .dir-card')) return;
+    e.preventDefault();
+    if (state.editMode) return;
+    openWallMenu(e);
+  });
+  addEventListener('blur', () => { toggleEngineMenu(false); $('#wallMenu').hidden = true; });
 }
 
 /* ================= 设置（外观 / 搜索 / 网格） ================= */
@@ -1143,12 +1321,17 @@ function closePanel() {
   $('#sidePanel').hidden = true;
 }
 
-function toggleEditMode() {
-  state.editMode = !state.editMode;
+function setEditMode(on) {
+  if (state.editMode === on) return;
+  state.editMode = on;
   const b = $('#actEdit');
-  b.classList.toggle('on', state.editMode);
-  b.textContent = state.editMode ? '退出编辑' : '编辑模式';
+  b.classList.toggle('on', on);
+  b.textContent = on ? '退出编辑' : '编辑模式';
   renderGrid();
+}
+
+function toggleEditMode() {
+  setEditMode(!state.editMode);
 }
 
 function bindSettingsDialog() {
@@ -1473,7 +1656,7 @@ function restoreBackup(i) {
     version: 1,
     sites: (b.payload.sites || []).map(s => ({
       id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
-      icon: s.icon || '', badge: !!s.badge,
+      icon: s.icon || '', avatar: !!s.avatar, badge: !!s.badge,
     })),
     settings: { ...normalizeSettings(b.payload.settings || {}), sync: keepSync },
   };
@@ -1537,7 +1720,7 @@ function bindImport() {
           version: 1,
           sites: payload.sites.map(s => ({
             id: s.id || uid(), name: String(s.name || ''), url: String(s.url || ''),
-            icon: s.icon || '', badge: !!s.badge,
+            icon: s.icon || '', avatar: !!s.avatar, badge: !!s.badge,
           })),
           settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync },
         };
@@ -1596,7 +1779,7 @@ function bindEvents() {
   });
   $('#searchInput').addEventListener('blur', () => setTimeout(hideSug, 150));
 
-  bindSiteDialog();
+  bindSitePanel();
   bindSettingsDialog();
   bindEngineDialog();
   bindSyncDialog();
@@ -1628,7 +1811,7 @@ function bindEvents() {
 
   // 键盘
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleEngineMenu(false); hideSug(); closePanel(); $('#ctxMenu').hidden = true; }
+    if (e.key === 'Escape') { toggleEngineMenu(false); hideSug(); closePanel(); closeSiteDialog(); closeIconFind(); $('#wallMenu').hidden = true; }
     const tag = document.activeElement.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
@@ -1636,11 +1819,24 @@ function bindEvents() {
       $('#searchInput').focus();
       $('#searchInput').select();
     }
+    if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      openIconFind();
+    }
     if (!typing) {
       if (e.key === 'ArrowRight') flipPage(1);
       if (e.key === 'ArrowLeft') flipPage(-1);
     }
   });
+
+  // 搜索图标浮层
+  $('#iconFindInput').addEventListener('input', e => filterCards(e.target.value));
+  $('#iconFindInput').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const first = document.querySelector('#grid .card:not(.find-hide)');
+    if (first) { closeIconFind(); first.click(); }
+  });
+  $('#iconFind').addEventListener('click', e => { if (e.target === e.currentTarget) closeIconFind(); });
 
   // 滚轮翻页
   let wheelAt = 0;

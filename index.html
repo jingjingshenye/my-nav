@@ -6,7 +6,7 @@
   <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
   <title>Nav · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260923b">
+  <link rel="stylesheet" href="css/style.css?v=20260924a">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -47,27 +47,38 @@
     <img class="logo-pinwheel" id="logo" src="assets/logo.svg" alt="关于" title="关于 Nav">
   </footer>
 
-  <!-- 添加 / 编辑网址 -->
-  <dialog id="dlgSite">
-    <form class="dlg-form" id="siteForm" novalidate>
-      <h3 id="siteDlgTitle">添加网址</h3>
-      <label>名称
-        <input name="name" maxlength="24" placeholder="如：百度" required>
+  <!-- 编辑图标侧边面板（对齐 inftab：右键图标进入编辑，点图标弹出） -->
+  <div class="edit-mask" id="editMask" hidden></div>
+  <aside class="edit-panel" id="editPanel" hidden>
+    <button type="button" class="edit-close" id="editPanelClose" title="关闭">&times;</button>
+    <h3 id="editDlgTitle">编辑图标</h3>
+    <div class="edit-card">
+      <label class="edit-field">网站地址
+        <input id="editUrl" placeholder="https://www.example.com">
       </label>
-      <label>网址
-        <input name="url" placeholder="https://www.example.com" required>
+      <label class="edit-field">网站名称
+        <input id="editName" maxlength="24" placeholder="如：百度">
       </label>
-      <label>图标 URL <span class="hint">留空则自动获取网站图标</span>
-        <input name="icon" placeholder="https://.../logo.png">
-      </label>
-      <label class="check"><input type="checkbox" name="badge"> 显示红点提醒</label>
-      <p class="form-error" id="siteFormError" hidden></p>
-      <div class="dlg-foot">
-        <button type="button" class="btn" data-close>取消</button>
-        <button type="submit" class="btn primary">保存</button>
+      <div class="edit-field">选择图标
+        <div class="icon-pick" id="iconPick"></div>
+        <input type="file" id="iconFile" accept="image/*" hidden>
       </div>
-    </form>
-  </dialog>
+      <p class="form-error" id="editFormError" hidden></p>
+      <button type="button" class="edit-ok" id="editOk">确定</button>
+      <button type="button" class="edit-cancel" id="editCancel">取消</button>
+    </div>
+  </aside>
+
+  <!-- 壁纸右键菜单（对齐 inftab） -->
+  <div class="ctx-menu" id="wallMenu" hidden></div>
+
+  <!-- 搜索图标浮层（Ctrl + F） -->
+  <div class="iconfind-mask" id="iconFind" hidden>
+    <div class="iconfind-box">
+      <input id="iconFindInput" placeholder="输入名称筛选当前页图标，回车打开第一个匹配">
+      <p class="hint">Esc 取消筛选</p>
+    </div>
+  </div>
 
   <!-- 设置抽屉 -->
   <div class="dir-mask" id="dirMask" hidden></div>
@@ -289,6 +300,10 @@
       <button class="dlg-close" data-close title="关闭">&times;</button>
     </div>
     <div class="dlg-body">
+      <section id="favSection" hidden>
+        <h4>我的收藏</h4>
+        <div class="gal-grid" id="favGrid"></div>
+      </section>
       <section>
         <h4>必应每日壁纸 <button type="button" class="mini-btn" id="bingRefresh">刷新</button></h4>
         <div class="gal-grid" id="bingGrid"><p class="hint">加载中…</p></div>
@@ -399,10 +414,9 @@
     </div>
   </dialog>
 
-  <div class="ctx-menu" id="ctxMenu" hidden></div>
   <div class="toasts" id="toasts"></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js?v=20260923b"></script>
+  <script type="module" src="js/app.js?v=20260924a"></script>
 </body>
 </html>

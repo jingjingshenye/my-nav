@@ -974,3 +974,94 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 
 .sp-pane { display: none; }
 .sp-pane.active { display: block; }
+
+/* ---------- 编辑图标侧边面板（对齐 inftab） ---------- */
+.edit-mask {
+  position: fixed; inset: 0; z-index: 84;
+  background: rgba(20, 24, 28, .32);
+}
+.edit-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 85;
+  width: min(430px, 92vw);
+  background: #fff; box-shadow: -16px 0 60px rgba(0, 0, 0, .22);
+  padding: 26px 24px;
+  animation: slide-in-right .22s ease;
+}
+@keyframes slide-in-right { from { transform: translateX(40px); opacity: 0; } }
+.edit-close {
+  position: absolute; top: 18px; left: -52px;
+  width: 36px; height: 36px; border: none; border-radius: 50%;
+  background: rgba(255, 255, 255, .92); color: #444;
+  font-size: 22px; line-height: 1; cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
+}
+.edit-panel h3 { font-size: 20px; color: #333; margin: 0 0 18px; }
+.edit-card {
+  background: #f7f7f8; border-radius: 12px;
+  padding: 20px 22px 22px;
+}
+.edit-field { display: block; font-size: 12.5px; color: #8a8f98; margin-bottom: 14px; }
+.edit-field input {
+  display: block; width: 100%; margin-top: 4px;
+  border: none; border-bottom: 1px solid #e2e4e8; border-radius: 0;
+  background: transparent; padding: 6px 0 8px;
+  font-size: 14px; color: #333; outline: none;
+}
+.edit-field input:focus { border-bottom-color: var(--acc, #4a90d9); }
+.icon-pick { display: flex; gap: 16px; margin-top: 12px; }
+.pick {
+  position: relative; width: 72px; padding: 0;
+  border: none; background: none; cursor: pointer; text-align: center;
+}
+.pick-img {
+  display: grid; place-items: center;
+  width: 64px; height: 64px; margin: 0 auto;
+  border-radius: 12px; background: #fff;
+  border: 1px solid #e2e4e8; overflow: hidden;
+  font-size: 18px;
+}
+.pick-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+.pick.on .pick-img { border-color: #c9ccd1; box-shadow: 0 0 0 2px rgba(0, 0, 0, .06); }
+.pick-x {
+  position: absolute; top: -6px; right: -2px; z-index: 1;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #3c4043; color: #fff;
+  font-size: 13px; font-style: normal; line-height: 18px; text-align: center;
+}
+.pick-cap { display: block; margin-top: 7px; font-size: 11px; color: #9aa0a6; }
+.ph-tile {
+  display: grid; place-items: center;
+  width: 100%; height: 100%; border-radius: 12px;
+  color: #fff; font-size: 17px; letter-spacing: 1px;
+}
+.pick-plus { color: #b9bec4; font-size: 24px; }
+.edit-ok {
+  width: 100%; height: 40px; margin-top: 10px;
+  border: none; border-radius: 8px; cursor: pointer;
+  background: #3d3f43; color: #fff; font-size: 14px;
+}
+.edit-ok:hover { background: #2f3134; }
+.edit-cancel {
+  width: 100%; height: 40px; margin-top: 10px;
+  border: none; border-radius: 8px; cursor: pointer;
+  background: #ececee; color: #555; font-size: 14px;
+}
+.edit-cancel:hover { background: #e2e2e5; }
+
+/* 壁纸右键菜单快捷键说明 */
+.ctx-menu button .sc { float: right; color: #9aa0a6; font-size: 11px; margin-left: 18px; }
+
+/* ---------- 搜索图标浮层（Ctrl + F） ---------- */
+.iconfind-mask {
+  position: fixed; inset: 0; z-index: 86;
+  background: rgba(20, 24, 28, .35);
+}
+.iconfind-box { position: absolute; top: 22vh; left: 50%; transform: translateX(-50%); width: min(460px, 90vw); }
+.iconfind-box input {
+  width: 100%; border: none; border-radius: 12px;
+  padding: 14px 18px; font-size: 14.5px; outline: none;
+  background: #fff; color: #333;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .25);
+}
+.iconfind-box .hint { margin: 10px 4px 0; color: rgba(255, 255, 255, .85); font-size: 12px; text-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+.card.find-hide { display: none; }
