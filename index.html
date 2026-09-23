@@ -6,7 +6,7 @@
   <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
   <title>Nav · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20260923">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -26,6 +26,7 @@
       <button data-act="sync">数据同步</button>
       <hr>
       <button data-act="loadDefault">加载内置数据</button>
+      <button data-act="loadDefault">加载内置数据</button>
       <button data-act="import">导入数据</button>
       <button data-act="export">导出数据</button>
       <hr>
@@ -37,7 +38,7 @@
     <section class="search-area" id="searchArea">
       <div class="engine-tabs" id="engineTabs" role="tablist"></div>
       <form class="search-bar" id="searchForm">
-        <button type="button" class="engine-logo" id="engineLogo" title="切换搜索引擎"></button>
+        <button type="button" class="engine-logo" id="engineLogo" title="切换搜索引擎"></button><i class="icon-dow" aria-hidden="true">&#9662;</i>
         <input id="searchInput" type="text" placeholder="输入并搜索" autocomplete="off" spellcheck="false">
         <button type="submit" class="search-btn" id="searchBtn" hidden>搜索</button>
         <nav class="menu engine-menu" id="engineMenu" hidden></nav>
@@ -99,6 +100,22 @@
     </section>
 
     <section class="set-card">
+      <div class="set-head"><h4>通知</h4><button type="button" class="cl">&mdash;</button></div>
+      <div class="set-body">
+        <div class="set-row"><span>在图标上显示待办事项数量</span><label class="switch"><input type="checkbox" id="tgTodoBadge"><i></i></label></div>
+      </div>
+    </section>
+
+    <section class="set-card">
+      <div class="set-head"><h4>语言</h4><button type="button" class="cl">&mdash;</button></div>
+      <div class="set-body">
+        <div class="set-row"><span>语言选择</span>
+          <select id="selLang" disabled><option>中文简体</option></select>
+        </div>
+      </div>
+    </section>
+
+    <section class="set-card">
       <div class="set-head"><h4>视图</h4><button type="button" class="cl">&mdash;</button></div>
       <div class="set-body">
         <div class="set-row col"><span>屏幕缩放</span>
@@ -106,6 +123,7 @@
         </div>
         <div class="set-row"><span>在右下角显示随机壁纸按钮</span><label class="switch"><input type="checkbox" id="tgRandomWall"><i></i></label></div>
         <div class="set-row"><span>翻页按钮</span><label class="switch"><input type="checkbox" id="tgPageBtns"><i></i></label></div>
+        <div class="set-row"><span>隐藏右下角风车</span><label class="switch"><input type="checkbox" id="tgHideWindmill"><i></i></label></div>
       </div>
     </section>
 
@@ -122,13 +140,6 @@
         <div class="set-row"><span>隐藏图标名称</span><label class="switch"><input type="checkbox" id="tgHideName"><i></i></label></div>
         <div class="set-row"><span>图标阴影</span><label class="switch"><input type="checkbox" id="tgIconShadow"><i></i></label></div>
         <div class="set-row"><span>启动动画</span><label class="switch"><input type="checkbox" id="tgIconIntro"><i></i></label></div>
-        <div class="set-row col"><span>入场动画效果</span>
-          <select id="selEasing">
-            <option value="default">默认</option>
-            <option value="spring">回弹</option>
-            <option value="fade">淡入</option>
-          </select>
-        </div>
         <div class="set-row col"><span>图标圆角</span>
           <div class="range-row"><input type="range" id="rgIconRadius" min="0" max="100" step="5"><b class="range-val" id="rgIconRadiusVal">50%</b></div>
         </div>
@@ -148,7 +159,7 @@
         <div class="set-row"><span>显示搜索建议</span><label class="switch"><input type="checkbox" id="tgSuggest"><i></i></label></div>
         <div class="set-row"><span>保留搜索框内容</span><label class="switch"><input type="checkbox" id="tgKeepText"><i></i></label></div>
         <div class="set-row"><span>隐藏搜索类别</span><label class="switch"><input type="checkbox" id="tgHideType"><i></i></label></div>
-        <div class="set-row"><span>显示搜索按钮</span><label class="switch"><input type="checkbox" id="tgSearchBtn"><i></i></label></div>
+        <div class="set-row"><span>隐藏搜索按钮</span><label class="switch"><input type="checkbox" id="tgHideSearchBtn" checked><i></i></label></div>
         <div class="set-row col"><span>搜索框大小</span>
           <div class="range-row"><input type="range" id="rgSearchSize" min="70" max="130" step="5"><b class="range-val" id="rgSearchSizeVal">90%</b></div>
         </div>
@@ -201,6 +212,14 @@
         <p class="pane-tip">点搜索框左侧 Logo 可快速切换；「添加」里可从引擎库启用内置引擎。</p>
         <div class="engine-list" id="engineList"></div>
         <button type="button" class="btn" id="btnAddEngine">＋ 添加搜索引擎</button>
+      </div>
+    </section>
+
+    <section class="set-card">
+      <div class="set-head"><h4>动画</h4><button type="button" class="cl">&mdash;</button></div>
+      <div class="set-body">
+        <p class="pane-tip">作用于图标入场动画</p>
+        <div class="ease-cards" id="easeCards"></div>
       </div>
     </section>
 
@@ -389,6 +408,6 @@
   <div class="toasts" id="toasts"></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=20260923"></script>
 </body>
 </html>

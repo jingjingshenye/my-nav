@@ -152,7 +152,9 @@ function seedSettings() {
     // 入场动画效果
     animEasing: 'default',
     // 搜索按钮
-    searchBtn: false,
+    searchHideBtn: true,
+    showTodoBadge: true,
+    hideWindmill: false,
     // 壁纸遮罩 / 模糊
     wallOpacity: 40,
     wallBlur: 0,
@@ -240,7 +242,12 @@ function normalizeSettings(s = {}) {
   out.wallOpacity = pct(out.wallOpacity, 40, 0, 100);
   out.wallBlur = pct(out.wallBlur, 0, 0, 20);
   out.animEasing = ['default', 'spring', 'fade'].includes(out.animEasing) ? out.animEasing : 'default';
-  out.searchBtn = out.searchBtn === true;
+  // 旧字段 searchBtn(显示) 迁移为 searchHideBtn(隐藏)
+  if (s.searchHideBtn === undefined && s.searchBtn !== undefined) out.searchHideBtn = s.searchBtn === false;
+  out.searchHideBtn = out.searchHideBtn !== false; // 默认隐藏（对齐 inftab）
+  out.showTodoBadge = out.showTodoBadge !== false;
+  out.hideWindmill = out.hideWindmill === true;
+  delete out.searchBtn;
   return out;
 }
 
@@ -758,7 +765,8 @@ function applyAppearance() {
 
   const grid = $('#grid');
   grid.dataset.easing = s.animEasing;
-  $('#searchBtn').hidden = !s.searchBtn;
+  $('#searchBtn').hidden = s.searchHideBtn;
+  $('#logo').style.display = s.hideWindmill ? 'none' : '';
   grid.classList.toggle('hide-labels', !!s.hideIconName);
   grid.classList.toggle('no-icon-shadow', !s.iconShadow);
   grid.classList.toggle('icon-intro', !!s.iconIntro);
@@ -799,8 +807,10 @@ function openSettings() {
   $('#tgFontShadow').checked = s.fontShadow;
   $('#rgFontSize').value = s.fontSize;
   $('#rgFontSizeVal').textContent = String(s.fontSize);
-  $('#selEasing').value = s.animEasing;
-  $('#tgSearchBtn').checked = s.searchBtn;
+  $('#tgHideSearchBtn').checked = s.searchHideBtn;
+  $('#tgTodoBadge').checked = s.showTodoBadge;
+  $('#tgHideWindmill').checked = s.hideWindmill;
+  renderEaseCards();
   $('#rgWallOpacity').value = s.wallOpacity;
   $('#rgWallOpacityVal').textContent = s.wallOpacity + '%';
   $('#rgWallBlur').value = s.wallBlur;
@@ -1132,6 +1142,11 @@ function updateRangeFill(el) {
   el.style.setProperty('--p', p.toFixed(1) + '%');
 }
 
+function closeSetDrawer() {
+  $('#setDrawerMask').hidden = true;
+  $('#setDrawer').hidden = true;
+}
+
 function bindSettingsDialog() {
   // 设置抽屉：分区折叠/展开
   $('#setDrawer').addEventListener('click', e => {
@@ -1200,12 +1215,9 @@ function bindSettingsDialog() {
   bindRange('rgSearchOpacity', 'rgSearchOpacityVal', 'searchOpacity', applyAppearance);
   bind('tgFontShadow', 'fontShadow', renderGrid);
   bindRange('rgFontSize', 'rgFontSizeVal', 'fontSize', renderGrid, '');
-  $('#selEasing').addEventListener('change', e => {
-    state.data.settings.animEasing = e.target.value;
-    persist();
-    renderGrid();
-  });
-  bind('tgSearchBtn', 'searchBtn', applyAppearance);
+  bind('tgHideSearchBtn', 'searchHideBtn', applyAppearance);
+  bind('tgTodoBadge', 'showTodoBadge', renderGrid);
+  bind('tgHideWindmill', 'hideWindmill', applyAppearance);
   bindRange('rgWallOpacity', 'rgWallOpacityVal', 'wallOpacity', applyAppearance);
   bindRange('rgWallBlur', 'rgWallBlurVal', 'wallBlur', applyAppearance);
   $('#wallFile').addEventListener('change', e => {
@@ -1244,6 +1256,39 @@ function bindSettingsDialog() {
     renderAll();
     openSettings();
     toast('已还原默认设置');
+  });
+}
+
+/* ---------- 动画效果缩略卡（默认 / 回弹 / 淡入） ---------- */
+const EASE_PRESETS = [
+  { id: 'default', name: '默认' },
+  { id: 'spring', name: '回弹' },
+  { id: 'fade', name: '淡入' },
+];
+
+function renderEaseCards() {
+  const box = $('#easeCards');
+  const cur = state.data.settings.animEasing;
+  box.innerHTML = '';
+  EASE_PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ease-card' + (cur === p.id ? ' active' : '');
+    const demo = document.createElement('span');
+    demo.className = 'ease-demo ' + p.id;
+    demo.innerHTML = '<i></i>';
+    b.append(demo);
+    const cap = document.createElement('span');
+    cap.className = 'ease-name';
+    cap.textContent = p.name;
+    b.append(cap);
+    b.onclick = () => {
+      state.data.settings.animEasing = p.id;
+      persist();
+      renderGrid();
+      renderEaseCards();
+    };
+    box.append(b);
   });
 }
 
@@ -1610,7 +1655,7 @@ function widgetEl(w) {
   a.dataset.widget = w.id;
   let inner = '';
   if (w.id === 'todo') {
-    const n = todoUndone();
+    const n = state.data.settings.showTodoBadge ? todoUndone() : 0;
     inner = `<span class="icon">${SVG_TODO}${n ? '<i class="count-badge">' + (n > 99 ? '99+' : n) + '</i>' : ''}</span><span class="label">待办事项</span>`;
     a.addEventListener('click', e => { e.preventDefault(); openTodo(); });
   } else if (w.id === 'note') {

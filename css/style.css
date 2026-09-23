@@ -912,3 +912,38 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 }
 .set-card.collapsed .set-body { display: none; }
 .set-drawer-foot { display: flex; justify-content: flex-end; padding: 4px 2px 10px; }
+
+/* ---------- 动画效果缩略卡 ---------- */
+.ease-cards { display: flex; gap: 10px; }
+.ease-card {
+  width: 92px; border: 1.5px solid var(--line); background: #fff;
+  border-radius: 10px; padding: 10px 4px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer;
+}
+.ease-card:hover { border-color: var(--line-2); }
+.ease-card.active { border-color: var(--acc); }
+.ease-demo {
+  width: 64px; height: 40px; border-radius: 8px;
+  background: var(--glass-2);
+  display: grid; place-items: center;
+}
+.ease-demo i { width: 30px; height: 18px; border-radius: 4px; background: #c9cdd2; }
+.ease-card.active .ease-demo { background: #2a2a2a; }
+.ease-card.active .ease-demo i { background: #fff; }
+.ease-name { font-size: 12px; color: #444; }
+.ease-card.active .ease-name { color: var(--tx); font-weight: 600; }
+
+/* 图标入场动画（按缓动类型） */
+.icon-intro[data-easing="spring"] .card { animation: card-spring .5s cubic-bezier(.3, 1.6, .55, 1) backwards; animation-delay: calc(var(--i, 0) * 35ms); }
+.icon-intro[data-easing="fade"] .card { animation: card-fade .6s ease backwards; animation-delay: calc(var(--i, 0) * 35ms); }
+@keyframes card-spring { from { opacity: 0; transform: scale(.7); } 70% { transform: scale(1.06); } }
+@keyframes card-fade { from { opacity: 0; } }
+
+/* 引擎 Logo 下拉箭头 */
+.engine-logo { position: relative; }
+.icon-dow {
+  flex: none; font-style: normal;
+  color: #b9bfc6; font-size: 10px;
+  margin-left: -4px; user-select: none;
+}
