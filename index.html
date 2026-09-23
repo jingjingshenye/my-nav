@@ -175,95 +175,6 @@
 
     <!-- Tab 3：设置 -->
     <div class="sp-pane" data-pane="settings">
-      <section class="set-card">
-        <div class="set-head"><h4>目标打开方式</h4><button type="button" class="cl">&mdash;</button></div>
-        <div class="set-body">
-          <div class="set-row"><span>在新标签页中打开网站</span><label class="switch"><input type="checkbox" id="tgSitesNewTab"><i></i></label></div>
-          <div class="set-row"><span>在新标签页中打开第三方搜索结果</span><label class="switch"><input type="checkbox" id="tgSearchNewTab"><i></i></label></div>
-        </div>
-      </section>
-
-
-      <section class="set-card">
-        <div class="set-head"><h4>语言</h4><button type="button" class="cl">&mdash;</button></div>
-        <div class="set-body">
-          <div class="set-row"><span>语言选择</span>
-            <select id="selLang">
-              <option value="zh">简体中文</option>
-              <option value="zh-tw">繁體中文</option>
-              <option value="en">English</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <section class="set-card">
-        <div class="set-head"><h4>视图</h4><button type="button" class="cl">&mdash;</button></div>
-        <div class="set-body">
-          <div class="set-row col"><span>屏幕缩放</span>
-            <div class="range-row"><input type="range" id="rgScale" min="60" max="140" step="5"><b class="range-val" id="rgScaleVal">100%</b></div>
-          </div>
-          <div class="set-row"><span>翻页按钮</span><label class="switch"><input type="checkbox" id="tgPageBtns"><i></i></label></div>
-        </div>
-      </section>
-
-      <section class="set-card">
-        <div class="set-head"><h4>布局</h4><button type="button" class="cl">&mdash;</button></div>
-        <div class="set-body">
-          <div class="layout-presets" id="layoutPresets"></div>
-        </div>
-      </section>
-
-      <section class="set-card">
-        <div class="set-head"><h4>图标</h4><button type="button" class="cl">&mdash;</button></div>
-        <div class="set-body">
-          <div class="set-row"><span>隐藏图标名称</span><label class="switch"><input type="checkbox" id="tgHideName"><i></i></label></div>
-          <div class="set-row"><span>图标阴影</span><label class="switch"><input type="checkbox" id="tgIconShadow"><i></i></label></div>
-          <div class="set-row"><span>启动动画</span><label class="switch"><input type="checkbox" id="tgIconIntro"><i></i></label></div>
-          <div class="set-row col"><span>图标圆角</span>
-            <div class="range-row"><input type="range" id="rgIconRadius" min="0" max="100" step="5"><b class="range-val" id="rgIconRadiusVal">50%</b></div>
-          </div>
-          <div class="set-row col"><span>图标不透明度</span>
-            <div class="range-row"><input type="range" id="rgIconOpacity" min="30" max="100" step="5"><b class="range-val" id="rgIconOpacityVal">100%</b></div>
-          </div>
-          <div class="set-row col"><span>图标大小</span>
-            <div class="range-row"><input type="range" id="rgIconScale" min="50" max="120" step="5"><b class="range-val" id="rgIconScaleVal">71%</b></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="set-card">
-        <div class="set-head"><h4>搜索框</h4><button type="button" class="cl">&mdash;</button></div>
-        <div class="set-body">
-          <div class="set-row"><span>隐藏搜索框</span><label class="switch"><input type="checkbox" id="tgSearchHide"><i></i></label></div>
-          <div class="set-row"><span>显示搜索建议</span><label class="switch"><input type="checkbox" id="tgSuggest"><i></i></label></div>
-          <div class="set-row"><span>保留搜索框内容</span><label class="switch"><input type="checkbox" id="tgKeepText"><i></i></label></div>
-          <div class="set-row"><span>隐藏搜索类别</span><label class="switch"><input type="checkbox" id="tgHideType"><i></i></label></div>
-          <div class="set-row"><span>隐藏搜索按钮</span><label class="switch"><input type="checkbox" id="tgHideSearchBtn"><i></i></label></div>
-          <div class="set-row col"><span>搜索框大小</span>
-            <div class="range-row"><input type="range" id="rgSearchSize" min="70" max="160" step="5"><b class="range-val" id="rgSearchSizeVal">90%</b></div>
-          </div>
-          <div class="set-row col"><span>搜索框圆角</span>
-            <div class="range-row"><input type="range" id="rgSearchRadius" min="0" max="60" step="5"><b class="range-val" id="rgSearchRadiusVal">20%</b></div>
-          </div>
-          <div class="set-row col"><span>搜索框不透明度</span>
-            <div class="range-row"><input type="range" id="rgSearchOpacity" min="30" max="100" step="5"><b class="range-val" id="rgSearchOpacityVal">100%</b></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="set-card">
-        <div class="set-head"><h4>字体</h4><button type="button" class="cl">&mdash;</button></div>
-        <div class="set-body">
-          <div class="set-row"><span>字体阴影</span><label class="switch"><input type="checkbox" id="tgFontShadow"><i></i></label></div>
-          <div class="set-row col"><span>字体大小</span>
-            <div class="range-row"><input type="range" id="rgFontSize" min="10" max="20" step="1"><b class="range-val" id="rgFontSizeVal">13</b></div>
-          </div>
-          <div class="set-row col"><span>字体颜色</span>
-            <div class="swatches" id="fontSwatches"></div>
-          </div>
-        </div>
-      </section>
 
       <section class="set-card">
         <div class="set-head"><h4>壁纸</h4><button type="button" class="cl">&mdash;</button></div>
@@ -285,7 +196,88 @@
           </div>
         </div>
       </section>
-
+      <section class="set-card">
+        <div class="set-head"><h4>图标</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>隐藏图标名称</span><label class="switch"><input type="checkbox" id="tgHideName"><i></i></label></div>
+          <div class="set-row"><span>图标阴影</span><label class="switch"><input type="checkbox" id="tgIconShadow"><i></i></label></div>
+          <div class="set-row"><span>启动动画</span><label class="switch"><input type="checkbox" id="tgIconIntro"><i></i></label></div>
+          <div class="set-row col"><span>图标圆角</span>
+            <div class="range-row"><input type="range" id="rgIconRadius" min="0" max="100" step="5"><b class="range-val" id="rgIconRadiusVal">50%</b></div>
+          </div>
+          <div class="set-row col"><span>图标不透明度</span>
+            <div class="range-row"><input type="range" id="rgIconOpacity" min="30" max="100" step="5"><b class="range-val" id="rgIconOpacityVal">100%</b></div>
+          </div>
+          <div class="set-row col"><span>图标大小</span>
+            <div class="range-row"><input type="range" id="rgIconScale" min="50" max="120" step="5"><b class="range-val" id="rgIconScaleVal">71%</b></div>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>搜索框</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>隐藏搜索框</span><label class="switch"><input type="checkbox" id="tgSearchHide"><i></i></label></div>
+          <div class="set-row"><span>显示搜索建议</span><label class="switch"><input type="checkbox" id="tgSuggest"><i></i></label></div>
+          <div class="set-row"><span>保留搜索框内容</span><label class="switch"><input type="checkbox" id="tgKeepText"><i></i></label></div>
+          <div class="set-row"><span>隐藏搜索类别</span><label class="switch"><input type="checkbox" id="tgHideType"><i></i></label></div>
+          <div class="set-row"><span>隐藏搜索按钮</span><label class="switch"><input type="checkbox" id="tgHideSearchBtn"><i></i></label></div>
+          <div class="set-row col"><span>搜索框大小</span>
+            <div class="range-row"><input type="range" id="rgSearchSize" min="70" max="160" step="5"><b class="range-val" id="rgSearchSizeVal">90%</b></div>
+          </div>
+          <div class="set-row col"><span>搜索框圆角</span>
+            <div class="range-row"><input type="range" id="rgSearchRadius" min="0" max="60" step="5"><b class="range-val" id="rgSearchRadiusVal">20%</b></div>
+          </div>
+          <div class="set-row col"><span>搜索框不透明度</span>
+            <div class="range-row"><input type="range" id="rgSearchOpacity" min="30" max="100" step="5"><b class="range-val" id="rgSearchOpacityVal">100%</b></div>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>视图</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row col"><span>屏幕缩放</span>
+            <div class="range-row"><input type="range" id="rgScale" min="60" max="140" step="5"><b class="range-val" id="rgScaleVal">100%</b></div>
+          </div>
+          <div class="set-row"><span>翻页按钮</span><label class="switch"><input type="checkbox" id="tgPageBtns"><i></i></label></div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>字体</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>字体阴影</span><label class="switch"><input type="checkbox" id="tgFontShadow"><i></i></label></div>
+          <div class="set-row col"><span>字体大小</span>
+            <div class="range-row"><input type="range" id="rgFontSize" min="10" max="20" step="1"><b class="range-val" id="rgFontSizeVal">13</b></div>
+          </div>
+          <div class="set-row col"><span>字体颜色</span>
+            <div class="swatches" id="fontSwatches"></div>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>布局</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="layout-presets" id="layoutPresets"></div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>目标打开方式</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>在新标签页中打开网站</span><label class="switch"><input type="checkbox" id="tgSitesNewTab"><i></i></label></div>
+          <div class="set-row"><span>在新标签页中打开第三方搜索结果</span><label class="switch"><input type="checkbox" id="tgSearchNewTab"><i></i></label></div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>语言</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>语言选择</span>
+            <select id="selLang">
+              <option value="zh">简体中文</option>
+              <option value="zh-tw">繁體中文</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+      </section>
       <section class="set-card">
         <div class="set-head"><h4>搜索引擎</h4><button type="button" class="cl">&mdash;</button></div>
         <div class="set-body">
@@ -294,7 +286,6 @@
           <button type="button" class="btn" id="btnAddEngine">＋ 添加搜索引擎</button>
         </div>
       </section>
-
       <section class="set-card">
         <div class="set-head"><h4>动画</h4><button type="button" class="cl">&mdash;</button></div>
         <div class="set-body">
@@ -302,7 +293,6 @@
           <div class="ease-cards" id="easeCards"></div>
         </div>
       </section>
-
       <section class="set-card">
         <div class="set-head"><h4>重置设置</h4><button type="button" class="cl">&mdash;</button></div>
         <div class="set-body">
@@ -310,7 +300,7 @@
           <button type="button" class="btn danger-btn" id="btnResetSettings">还原设置</button>
         </div>
       </section>
-    </div>
+        </div>
   </aside>
 
   <!-- 壁纸库 -->
