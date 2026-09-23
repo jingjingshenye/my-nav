@@ -26,17 +26,8 @@ const TYPES = [
   { id: 'map',    name: '地图' },
 ];
 
-// 内置引擎库（baidu/bing 地址原样取自 inftab 默认数据，其余按各家官方搜索拼装）
+// 内置引擎库（bing 地址原样取自 inftab 默认数据，其余按各家官方搜索拼装）
 const ENGINE_CATALOG = [
-  {
-    id: 'baidu', name: 'baidu', glyph: '百', color: '#2932e1', urls: {
-      html: 'https://www.baidu.com/s?tn=75144485_7_dg&ie=utf-8&wd=',
-      photos: 'https://image.baidu.com/search/index?isource=infinity&iname=baidu&tn=baiduimage&word=',
-      news: 'https://news.baidu.com/ns?isource=infinity&iname=baidu&tn=news&ie=utf-8&word=',
-      videos: 'https://video.baidu.com/v?isource=infinity&iname=baidu&ie=utf-8&word=',
-      map: 'http://map.baidu.com/?isource=infinity&iname=baidu&newmap=1&ie=utf-8&s=s%26wd%3D',
-    },
-  },
   {
     id: 'bing', name: 'bing', glyph: 'b', color: '#008373', urls: {
       html: 'https://cn.bing.com/search?isource=infinity&iname=bing&itype=web&q=',
@@ -103,7 +94,7 @@ const ENGINE_CATALOG = [
 ];
 
 const cloneEngine = e => ({ id: e.id, name: e.name, glyph: e.glyph || '', color: e.color || '', urls: { ...e.urls } });
-const seedEngines = () => ENGINE_CATALOG.filter(e => e.id === 'baidu' || e.id === 'bing').map(cloneEngine);
+const seedEngines = () => ENGINE_CATALOG.filter(e => e.id === 'bing').map(cloneEngine);
 
 /* ================= 内置壁纸 ================= */
 const WALLPAPERS = [
@@ -118,7 +109,7 @@ const WALLPAPERS = [
 
 function seedSettings() {
   return {
-    engine: 'baidu',
+    engine: 'bing',
     searchType: 'html',
     engines: seedEngines(),
     // 目标打开方式
@@ -191,6 +182,7 @@ function normalizeSettings(s = {}) {
   const out = { ...def, ...s };
   out.engines = (Array.isArray(s.engines) ? s.engines : def.engines)
     .filter(e => e && e.id && e.name && e.urls)
+    .filter(e => e.id !== 'baidu') // 百度搜索已移除，存量数据一并清掉
     .map(e => {
       const urls = migrateUrls(e.urls);
       // 存量数据（含旧版键名）迁移时，用内置目录补齐缺失的新类型模板；新版数据完全尊重用户修改
