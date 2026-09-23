@@ -29,8 +29,10 @@ npx serve .
 
 ### GitHub Pages（在线地址）
 
-已配置 GitHub Actions 自动部署（`.github/workflows/deploy-pages.yml`）：推送到 `master` 分支即自动发布至
-<https://jingjingshenye.github.io/my-nav/>（仓库根目录即站点根目录，全部为相对路径引用，子路径下可直接运行）。
+已配置 GitHub Actions 自动发布（`.github/workflows/publish-gh-pages.yml`）：推送到 `master` 分支后，站点文件（`index.html`、`css/`、`js/`、`data/`、`assets/`）会自动发布到 `gh-pages` 分支，由 GitHub Pages 服务在
+<https://jingjingshenye.github.io/my-nav/>（约 1 分钟内生效）。
+
+> 注：仓库的 `github-pages` 环境保护规则只允许默认分支部署，故采用 gh-pages 分支方式发布，而非 `actions/deploy-pages`。
 
 ### Gitee Pages
 
