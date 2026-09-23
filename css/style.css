@@ -321,6 +321,16 @@ body {
 .card.draggable { cursor: grab; }
 .card.dragging { opacity: .45; }
 .card.drop-target .icon { outline: 2px dashed #fff; outline-offset: 3px; }
+/* 拖动落点插入条：拖动期间其它图标静止，落点位置用它表达 */
+.drag-insert {
+  position: absolute; z-index: 6; width: 5px; border-radius: 3px;
+  background: rgba(255, 255, 255, .92); box-shadow: 0 0 8px rgba(255, 255, 255, .55);
+  pointer-events: none; display: none;
+}
+.drag-insert.show { display: block; }
+/* 拖动中：源图标半透明驻留原位 */
+.grid-page .card.sortable-chosen { opacity: .35; }
+
 /* 拖拽合并提示气泡（重叠度 ≥70% 时出现在目标下方） */
 .merge-hint {
   position: fixed; z-index: 65; transform: translateX(-50%);

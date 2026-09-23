@@ -453,6 +453,7 @@ const state = {
   dropMergeId: null, // 拖拽悬停的普通图标 id（松手合成文件夹，手机桌面式）
   edgePageCreated: false, // 本次拖拽是否已通过末页边缘新建过页（一次拖拽最多新建一页）
   pendingNewPage: false, // 拖到「＋ 新建页」上的标记
+  dropPlanIdx: null, // 拖拽落点计划（松手后按此索引精确落位，拖动过程中图标不再互相挤动）
   extraPages: 0, // 编辑态手动新增的空页数（退出编辑自动回收）
   layout: { cols: 6, rows: 3, card: 98 },
 };
@@ -1166,6 +1167,9 @@ function makeSortable(pg) {
       state.dropFolderId = null;
       state.dropMergeId = null;
       state.pendingNewPage = false;
+      const plan = state.dropPlanIdx;
+      state.dropPlanIdx = null;
+      if (plan !== null && plan !== undefined) { moveEntryToIndex(id, plan); return; } // 拖动期间未实时排序，按插入条计划落位
       syncOrderFromDOM();
       persist();
       renderGrid();
@@ -2438,10 +2442,13 @@ function bindEvents() {
     state.edgePageCreated = false;
     state.dropFolderId = null;
     state.dropMergeId = null;
+    state.dropPlanIdx = null;
     // 记录抓取点偏移与卡片尺寸：dragover 时据此还原拖影的真实矩形，用于重叠度计算
     const r = card.getBoundingClientRect();
     grab = r.width > 0 ? { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height } : null;
     armedEl = null;
+    // 拖动期间关闭 Sortable 实时排序：其它图标保持静止（手机桌面式），落点用插入条表达，松手一次落位
+    sortableInstances.forEach(ins => { ins.options.sort = false; });
   }, true);
   let edgeTimer = null, edgeDir = 0, hoverCard = null, armedEl = null, grab = null;
   const showMergeHint = (el, text) => {
@@ -2454,6 +2461,43 @@ function bindEvents() {
     hint.classList.add('show');
   };
   const hideMergeHint = () => { const h = $('.merge-hint'); if (h) h.classList.remove('show'); };
+  // 插入位置指示条：拖动期间其它图标不动，落点用它表达
+  let insertBar = null;
+  const showInsertBar = (refEl, after) => {
+    if (!insertBar) { insertBar = document.createElement('div'); insertBar.id = 'dragInsert'; insertBar.className = 'drag-insert'; $('#gridArea').append(insertBar); }
+    const r = refEl.getBoundingClientRect(), a = $('#gridArea').getBoundingClientRect();
+    insertBar.style.left = Math.round((after ? r.right : r.left) - a.left - 3) + 'px';
+    insertBar.style.top = Math.round(r.top - a.top) + 'px';
+    insertBar.style.height = Math.round(r.height) + 'px';
+    insertBar.classList.add('show');
+  };
+  // 计算落点：光标在可见页上最近的卡片及其前后，换算成全局顶层索引（移除自身后的坐标）
+  const computeInsertPlan = (x, y) => {
+    const allPages = $$('#gridPages .grid-page');
+    const visIdx = allPages.findIndex(pg => !pg.classList.contains('off'));
+    const allTop = [];
+    allPages.forEach(pg => pg.querySelectorAll(':scope > .card').forEach(el => { if (el.dataset.id) allTop.push(el); }));
+    const dIdx = allTop.findIndex(el => el.dataset.id === state.dragId);
+    const visCards = visIdx >= 0 ? [...allPages[visIdx].querySelectorAll(':scope > .card')] : [];
+    let ref = null, refAfter = false, bestDist = Infinity;
+    visCards.forEach(el => {
+      if (el.dataset.id === state.dragId) return;
+      const r = el.getBoundingClientRect();
+      const px = Math.max(r.left, Math.min(x, r.right)), py = Math.max(r.top, Math.min(y, r.bottom));
+      const dist = (x - px) ** 2 + (y - py) ** 2;
+      if (dist < bestDist) { bestDist = dist; ref = el; refAfter = x > r.left + r.width / 2; }
+    });
+    let g;
+    if (!ref) {
+      const before = allPages.slice(0, Math.max(0, visIdx)).reduce((n, pg) => n + pg.querySelectorAll(':scope > .card').length, 0);
+      g = before;
+    } else {
+      const k = allTop.indexOf(ref);
+      g = refAfter ? k + 1 : k;
+    }
+    state.dropPlanIdx = g <= dIdx ? g : g - 1;
+    if (ref) showInsertBar(ref, refAfter);
+  };
   const clearHover = () => {
     if (hoverCard) { hoverCard.classList.remove('drop-target', 'merge-target'); hoverCard = null; }
     hideMergeHint();
@@ -2462,14 +2506,18 @@ function bindEvents() {
   };
   const stopEdge = () => { if (edgeTimer) { clearInterval(edgeTimer); edgeTimer = null; } };
   // 松手/拖断：只清视觉与翻页状态；dropFolderId/dropMergeId 留给 Sortable 的 onEnd 消费后清理
+  const hideInsertBar = () => { const bar = $('#dragInsert'); if (bar) bar.classList.remove('show'); };
   const endDragGesture = () => {
     stopEdge();
     if (hoverCard) { hoverCard.classList.remove('drop-target', 'merge-target'); hoverCard = null; }
     hideMergeHint();
+    hideInsertBar();
     armedEl = null;
     grab = null;
     state.dragging = false;
     state.edgePageCreated = false;
+    // capture 阶段先于 Sortable 的 onEnd 执行，这里不能清 dropPlanIdx，计划还要被消费
+    sortableInstances.forEach(ins => { ins.options.sort = true; });
   };
   document.addEventListener('dragover', e => {
     if (!state.dragging) { stopEdge(); clearHover(); return; }
@@ -2502,16 +2550,22 @@ function bindEvents() {
       const hit = e.target.closest && e.target.closest('#gridPages .grid-page:not(.off) .card');
       card = hit && hit.dataset.id !== state.dragId && !hit.classList.contains('add-card') ? hit : null;
     }
-    if (!card) clearHover();
-    else if (card !== hoverCard) {
+    if (!card) {
+      clearHover();
+      computeInsertPlan(e.clientX, e.clientY);
+    } else if (card !== hoverCard) {
       clearHover();
       hoverCard = card;
+      state.dropPlanIdx = null;
       const dragged = state.data.sites.find(x => x.id === state.dragId);
       const target = state.data.sites.find(x => x.id === card.dataset.id);
       if (dragged && !dragged.folder && target) {
         if (target.folder) { state.dropFolderId = target.id; card.classList.add('drop-target'); showMergeHint(card, t('松手移入文件夹')); }
         else { state.dropMergeId = target.id; card.classList.add('merge-target'); showMergeHint(card, t('松手合并为文件夹')); }
       }
+    } else {
+      state.dropPlanIdx = null;
+      hideInsertBar();
     }
 
     const E = 90;
