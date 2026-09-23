@@ -1065,3 +1065,68 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 }
 .iconfind-box .hint { margin: 10px 4px 0; color: rgba(255, 255, 255, .85); font-size: 12px; text-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
 .card.find-hide { display: none; }
+
+/* ---------- 侧边面板布局重构（对齐 inftab） ---------- */
+/* 顶部 tab：图标在上、文字在下 */
+.sp-tabs { flex: 1; display: flex; gap: 8px; }
+.sp-tab {
+  flex: 1; max-width: 108px;
+  flex-direction: column; gap: 3px;
+  padding: 7px 10px 6px; border-radius: 10px;
+  justify-content: center;
+}
+.sp-tab svg { width: 21px; height: 21px; }
+.sp-tab b { font-weight: 400; }
+.sp-tab span { font-size: 11.5px; }
+.sp-tab.active svg, .sp-tab.active span { color: #fff; }
+
+/* 添加页：左侧竖排分类 + 右侧单列站点 */
+.add-body { flex: 1; min-height: 0; display: flex; gap: 0; }
+.dir-cats {
+  flex: none; width: 132px;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 8px; border-right: 1px solid var(--line);
+  border-bottom: none; overflow: auto; scrollbar-width: thin;
+}
+.dir-cat {
+  border: none; background: none; text-align: left;
+  border-radius: 8px; padding: 8px 10px;
+  font-size: 12.5px; color: #444; white-space: nowrap;
+}
+.dir-cat:hover { background: var(--glass-2); }
+.dir-cat.active { background: var(--acc); color: #fff; }
+.dir-list {
+  flex: 1; overflow: auto; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  align-content: stretch; align-items: stretch;
+}
+.dir-list .dir-card { width: 100%; }
+.dir-empty { text-align: center; }
+
+/* 搜索框带放大镜图标 */
+.dir-search-box {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line-2); border-radius: 10px;
+  padding: 0 12px; background: #fff;
+}
+.dir-search-box svg { flex: none; width: 16px; height: 16px; color: #9aa0a6; }
+.dir-search-box input { flex: 1; border: none; background: none; padding: 9px 0; font-size: 13px; outline: none; color: var(--tx); }
+.btn.dark { background: #3d3f43; color: #fff; border-color: #3d3f43; }
+.btn.dark:hover { background: #2f3134; }
+
+/* 我的页表单行宽度收敛（修复输入框溢出） */
+.sp-pane { box-sizing: border-box; }
+.sp-pane .set-body { box-sizing: border-box; }
+.sp-pane label.plain { display: block; margin-bottom: 12px; color: #555; font-size: 12.5px; }
+.sp-pane label.plain input,
+.sp-pane .set-body input,
+.sp-pane .set-body select {
+  display: block; width: 100%; max-width: 100%; margin-top: 5px;
+  box-sizing: border-box;
+  border: 1px solid var(--line-2); border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; color: var(--tx);
+  background: #fff; outline: none;
+}
+.sp-pane .set-row select { width: auto; max-width: 62%; margin-top: 0; }
+.sync-time { font-size: 12.5px; color: #98a0a8; font-weight: 400; }
+.sp-pane .set-body .hint { font-size: 11.5px; line-height: 1.6; }

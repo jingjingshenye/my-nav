@@ -1598,6 +1598,7 @@ function fillSyncDialog() {
   $('#syncFile').value = s.filename || DATA_FILE;
   $('#syncAuto').checked = !!s.autoSync;
   $('#giteeFields').hidden = s.type !== 'gitee-gist';
+  $('#syncTimeText').textContent = s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString() : '从未';
   renderBackups();
   updateSyncStatus();
 }

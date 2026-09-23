@@ -6,7 +6,7 @@
   <meta name="description" content="Nav · 极简新标签页导航，数据存于 Gitee Gist，随处同步">
   <title>Nav · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260924a">
+  <link rel="stylesheet" href="css/style.css?v=20260924b">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -85,47 +85,66 @@
   <aside class="side-panel" id="sidePanel" hidden>
     <div class="sp-head">
       <nav class="sp-tabs">
-        <button type="button" class="sp-tab active" data-tab="add"><b>＋</b><span>添加</span></button>
-        <button type="button" class="sp-tab" data-tab="mine"><b>我</b><span>我的</span></button>
-        <button type="button" class="sp-tab" data-tab="settings"><b>⚙</b><span>设置</span></button>
+        <button type="button" class="sp-tab active" data-tab="add">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>
+          <span>添加</span>
+        </button>
+        <button type="button" class="sp-tab" data-tab="mine">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.6-3.6 3.4-5.6 7-5.6s6.4 2 7 5.6"/></svg>
+          <span>我的</span>
+        </button>
+        <button type="button" class="sp-tab" data-tab="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.64 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.09a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+          <span>设置</span>
+        </button>
       </nav>
       <button class="dlg-close" id="spClose" title="关闭">&times;</button>
     </div>
 
-    <!-- Tab 1：添加（网站目录 + 自定义） -->
+    <!-- Tab 1：添加（左侧竖排分类 + 右侧单列站点，对齐 inftab） -->
     <div class="sp-pane active" data-pane="add">
       <div class="sp-add-bar">
-        <input id="dirSearch" placeholder="搜索网站">
-        <button type="button" class="btn primary" id="actAddCustom">＋ 自定义</button>
+        <div class="dir-search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="dirSearch" placeholder="搜索网站">
+        </div>
+        <button type="button" class="btn dark" id="actAddCustom">＋ 自定义</button>
       </div>
-      <div class="dir-cats" id="dirCats"></div>
-      <div class="dir-list" id="dirList"></div>
+      <div class="add-body">
+        <nav class="dir-cats" id="dirCats"></nav>
+        <div class="dir-list" id="dirList"></div>
+      </div>
     </div>
 
-    <!-- Tab 2：我的（云同步 / 备份 / 数据） -->
+    <!-- Tab 2：我的（同步 / 备份与恢复，卡片行布局对齐 inftab） -->
     <div class="sp-pane" data-pane="mine">
       <section class="set-card">
-        <div class="set-head"><h4>云同步（Gitee Gist）</h4></div>
+        <div class="set-head"><h4>云同步</h4></div>
         <div class="set-body">
-          <label class="plain">同步方式
+          <div class="set-row"><span>与其他设备保持同步</span><label class="switch"><input type="checkbox" id="syncAuto"><i></i></label></div>
+          <div class="set-row"><span>上次同步时间</span><b class="sync-time" id="syncTimeText">从未</b></div>
+          <div class="set-row"><span>同步方式</span>
             <select id="syncType">
-              <option value="local">仅本地（浏览器存储）</option>
-              <option value="gitee-gist">Gitee Gist（云端）</option>
+              <option value="local">仅本地</option>
+              <option value="gitee-gist">Gitee Gist 云端</option>
             </select>
-          </label>
-          <div id="giteeFields" hidden>
-            <label class="plain">Gitee 私令牌 Token（需要 gists 权限）
-              <input id="syncToken" type="password" placeholder="gtp_xxxxxxxx" autocomplete="off">
-            </label>
-            <p class="hint">还没有？<a href="https://gitee.com/profile/personal_access_tokens" target="_blank" rel="noopener">去 Gitee 创建私令牌 →</a>　仅保存在本机浏览器。</p>
-            <label class="plain">Gist ID
-              <input id="syncGistId" placeholder="留空则「推送到云端」时自动创建">
-            </label>
-            <label class="plain">数据文件名
-              <input id="syncFile" placeholder="nav-data.json">
-            </label>
-            <label class="check"><input type="checkbox" id="syncAuto"> 修改后自动同步到云端</label>
           </div>
+        </div>
+      </section>
+
+      <section class="set-card" id="giteeFields" hidden>
+        <div class="set-head"><h4>Gitee 云端配置</h4></div>
+        <div class="set-body">
+          <label class="plain">Gitee 私令牌 Token
+            <input id="syncToken" type="password" placeholder="gtp_xxxxxxxx" autocomplete="off">
+          </label>
+          <p class="hint">还没有？<a href="https://gitee.com/profile/personal_access_tokens" target="_blank" rel="noopener">去 Gitee 创建私令牌 →</a>（勾选 gists 权限，仅保存在本机浏览器）</p>
+          <label class="plain">Gist ID
+            <input id="syncGistId" placeholder="留空则推送时自动创建">
+          </label>
+          <label class="plain">数据文件名
+            <input id="syncFile" placeholder="nav-data.json">
+          </label>
           <p class="sync-status" id="syncStatus"></p>
           <div class="backup-bar">
             <button type="button" class="btn primary" id="syncPush">推送到云端</button>
@@ -135,7 +154,7 @@
       </section>
 
       <section class="set-card">
-        <div class="set-head"><h4>备份与数据</h4></div>
+        <div class="set-head"><h4>备份与恢复</h4></div>
         <div class="set-body">
           <div class="backup-bar">
             <button type="button" class="btn" id="btnBackupNow">立即备份</button>
@@ -417,6 +436,6 @@
   <div class="toasts" id="toasts"></div>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js?v=20260924a"></script>
+  <script type="module" src="js/app.js?v=20260924b"></script>
 </body>
 </html>
