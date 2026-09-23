@@ -1463,7 +1463,8 @@ function updateSearchUI() {
     `https://favicon.im/${host}?larger=true`,
   ].map(u => escapeHtml(u)).join('|') : '';
   const img = sources ? `<img class="eng-logo-img" src="${sources.split('|')[0]}" data-sources="${sources}" alt="">` : '';
-  $('#engineLogo').innerHTML = `<span class="eng-logo-fb" style="background:${eng.color || tint(eng.name)}">${escapeHtml(glyph)}</span>${img}`;
+  // 白底 + favicon 裁满圆形（与添加列表图标一致）；品牌色仅作字母兜底文字色，不再垫彩色圆底
+  $('#engineLogo').innerHTML = `<span class="eng-logo-fb" style="color:${eng.color || tint(eng.name)}">${escapeHtml(glyph)}</span>${img}`;
 }
 
 /* ---------- 引擎选择弹层（Logo 下拉，对齐 inftab：全部引擎 + 添加） ---------- */
