@@ -25,9 +25,16 @@ npx serve .
 
 打开 <http://localhost:8080>。
 
-## 部署到 Gitee Pages
+## 部署
 
-仓库根目录即站点根目录，在 Gitee 仓库「服务 → Gitee Pages」中选择 `master` 分支根目录启动即可。
+### GitHub Pages（在线地址）
+
+已配置 GitHub Actions 自动部署（`.github/workflows/deploy-pages.yml`）：推送到 `master` 分支即自动发布至
+<https://jingjingshenye.github.io/my-nav/>（仓库根目录即站点根目录，全部为相对路径引用，子路径下可直接运行）。
+
+### Gitee Pages
+
+Gitee Pages 服务已停止，不再部署；Gitee 远程（`origin`）仍保留，用于代码备份与 Gist 云同步。
 
 ## 配置 Gitee Gist 云同步
 
