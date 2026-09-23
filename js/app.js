@@ -141,6 +141,7 @@ function t(s) {
   const d = I18N[lang];
   let out = (d && Object.prototype.hasOwnProperty.call(d, s)) ? d[s] : s;
   args.forEach((v, i) => { out = out.split('{' + i + '}').join(String(v)); });
+  if (args.length) out = out.split('{n}').join(String(args[0]));
   return out;
 }
 /** 静态 DOM 文案整体替换（可逆：WeakMap 记录每个节点的简体原文键；跳过站点名等用户数据区） */
@@ -526,12 +527,13 @@ const queueCloudPush = debounce(() => {
 async function pushCloud(notify = true) {
   const cfg = state.data.settings.sync;
   if (!isGistType(cfg.type)) throw new Error('当前未启用云端同步');
-  const adapter = createAdapter(cfg);
+  let adapter = createAdapter(cfg);
   if (!cfg.gistId) {
     cfg.gistId = await adapter.create(cloudPayload());
     persistLocal();
     toast(t('已创建云端 Gist（{n}），ID 已写入配置', cfg.gistId));
     if (!$('#sidePanel').hidden) fillSyncDialog();
+    adapter = createAdapter(cfg); // 重建适配器带上新 Gist ID，否则本次 save 仍认为未创建
   }
   await adapter.save(cloudPayload());
   state.data.settings.lastSyncAt = Date.now();
