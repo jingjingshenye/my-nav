@@ -957,3 +957,16 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
   object-fit: contain; border-radius: 50%;
   background: rgba(255, 255, 255, .92);
 }
+
+/* 抽屉快捷操作区 */
+.drawer-actions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 2px 2px 12px;
+}
+.drawer-actions .act {
+  border: 1px solid var(--line-2); background: #fff;
+  border-radius: 8px; padding: 6px 12px;
+  font-size: 12.5px; color: var(--tx); cursor: pointer;
+}
+.drawer-actions .act:hover { background: var(--glass-2); }
+.drawer-actions .act.on { background: var(--acc); border-color: var(--acc); color: #fff; }

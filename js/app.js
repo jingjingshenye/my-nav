@@ -740,11 +740,6 @@ function openCtxMenu(e, site) {
   m.style.top = Math.min(e.clientY, innerHeight - r.height - 8) + 'px';
 }
 
-/* ================= 菜单 ================= */
-function toggleMenu(force) {
-  $('#menu').hidden = force !== undefined ? !force : !$('#menu').hidden;
-}
-
 function applyAppearance() {
   const s = state.data.settings;
   const root = document.documentElement.style;
@@ -896,25 +891,6 @@ function renderSwatches() {
     };
     box.append(b);
   });
-}
-
-function onMenuAction(act) {
-  toggleMenu(false);
-  switch (act) {
-    case 'add': openSiteDialog(null); break;
-    case 'directory': openDirectory(); break;
-    case 'edit':
-      state.editMode = !state.editMode;
-      $('#menuEdit').classList.toggle('on', state.editMode);
-      renderGrid();
-      break;
-    case 'settings': openSettings(); break;
-    case 'loadDefault': loadDefaultData(); break;
-    case 'sync': fillSyncDialog(); $('#dlgSync').showModal(); break;
-    case 'import': $('#importFile').click(); break;
-    case 'export': exportData(); break;
-    case 'about': $('#dlgAbout').showModal(); break;
-  }
 }
 
 /* ================= 搜索类型与引擎 ================= */
@@ -1087,13 +1063,9 @@ function flipPage(delta) {
   renderGrid();
 }
 
-/* ================= 菜单事件 ================= */
+/* ================= 顶部按钮事件（汉堡直接弹出设置抽屉，对齐 inftab） ================= */
 function bindTopMenu() {
-  $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
-  $('#menu').addEventListener('click', e => {
-    const b = e.target.closest('button[data-act]');
-    if (b) onMenuAction(b.dataset.act);
-  });
+  $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); openSettings(); });
   $('#logo').addEventListener('click', () => $('#dlgAbout').showModal());
   $('#btnRandomWall').addEventListener('click', async e => {
     const btn = e.currentTarget;
@@ -1117,11 +1089,10 @@ function bindTopMenu() {
   });
 
   document.addEventListener('click', e => {
-    if (!$('#menu').hidden && !$('#menu').contains(e.target) && !$('#btnMenu').contains(e.target)) toggleMenu(false);
     if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
     if (!$('#ctxMenu').hidden && !$('#ctxMenu').contains(e.target)) $('#ctxMenu').hidden = true;
   });
-  addEventListener('blur', () => { toggleMenu(false); toggleEngineMenu(false); $('#ctxMenu').hidden = true; });
+  addEventListener('blur', () => { toggleEngineMenu(false); $('#ctxMenu').hidden = true; });
 }
 
 /* ================= 设置（外观 / 搜索 / 网格） ================= */
@@ -1159,7 +1130,24 @@ function closeSetDrawer() {
   $('#setDrawer').hidden = true;
 }
 
+function toggleEditMode() {
+  state.editMode = !state.editMode;
+  const b = $('#actEdit');
+  b.classList.toggle('on', state.editMode);
+  b.textContent = state.editMode ? '退出编辑' : '编辑模式';
+  renderGrid();
+}
+
 function bindSettingsDialog() {
+  // 抽屉快捷操作区
+  $('#actAdd').addEventListener('click', () => openSiteDialog(null));
+  $('#actDir').addEventListener('click', () => { closeSetDrawer(); openDirectory(); });
+  $('#actSync').addEventListener('click', () => { fillSyncDialog(); $('#dlgSync').showModal(); });
+  $('#actEdit').addEventListener('click', toggleEditMode);
+  $('#actImport').addEventListener('click', () => $('#importFile').click());
+  $('#actExport').addEventListener('click', exportData);
+  $('#actLoad').addEventListener('click', loadDefaultData);
+  $('#actAbout').addEventListener('click', () => $('#dlgAbout').showModal());
   // 设置抽屉：分区折叠/展开
   $('#setDrawer').addEventListener('click', e => {
     const head = e.target.closest('.set-head');
@@ -1621,7 +1609,7 @@ function bindEvents() {
 
   // 键盘
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleMenu(false); toggleEngineMenu(false); hideSug(); closeSetDrawer(); $('#ctxMenu').hidden = true; }
+    if (e.key === 'Escape') { toggleEngineMenu(false); hideSug(); closeSetDrawer(); $('#ctxMenu').hidden = true; }
     const tag = document.activeElement.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
@@ -1972,7 +1960,6 @@ function bindDirectory() {
 
 /** 加载项目内置数据（data/default-data.json），覆盖当前站点与外观 */
 async function loadDefaultData() {
-  toggleMenu(false);
   if (!confirm('加载项目内置数据？当前网址与外观设置会被覆盖（云同步配置保留）。')) return;
   try {
     const r = await fetch('data/default-data.json');

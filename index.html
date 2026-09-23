@@ -17,21 +17,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
 
-    <nav class="menu" id="menu" hidden>
-      <button data-act="add">＋ 添加网址</button>
-      <button data-act="directory">网站目录</button>
-      <button data-act="edit" id="menuEdit">编辑模式</button>
-      <hr>
-      <button data-act="settings">设置</button>
-      <button data-act="sync">数据同步</button>
-      <hr>
-      <button data-act="loadDefault">加载内置数据</button>
-      <button data-act="loadDefault">加载内置数据</button>
-      <button data-act="import">导入数据</button>
-      <button data-act="export">导出数据</button>
-      <hr>
-      <button data-act="about">关于</button>
-    </nav>
+
   </header>
 
   <main class="stage">
@@ -89,6 +75,16 @@
     <div class="set-drawer-head">
       <h3>设置</h3>
       <button class="dlg-close" id="setDrawerClose" title="关闭">&times;</button>
+    </div>
+    <div class="drawer-actions">
+      <button type="button" class="act" id="actAdd">＋ 添加网址</button>
+      <button type="button" class="act" id="actDir">网站目录</button>
+      <button type="button" class="act" id="actSync">数据同步</button>
+      <button type="button" class="act" id="actEdit">编辑模式</button>
+      <button type="button" class="act" id="actImport">导入</button>
+      <button type="button" class="act" id="actExport">导出</button>
+      <button type="button" class="act" id="actLoad">内置数据</button>
+      <button type="button" class="act" id="actAbout">关于</button>
     </div>
 
     <section class="set-card">
