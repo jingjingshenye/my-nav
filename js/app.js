@@ -341,7 +341,7 @@ async function pushCloud(notify = true) {
     cfg.gistId = await adapter.create(cloudPayload());
     persistLocal();
     toast(`已创建云端 Gist（${cfg.gistId}），ID 已写入配置`);
-    if ($('#dlgSync').open) fillSyncDialog();
+    if (!$('#sidePanel').hidden) fillSyncDialog();
   }
   await adapter.save(cloudPayload());
   state.data.settings.lastSyncAt = Date.now();
@@ -451,7 +451,7 @@ function applyWallpaperUrl(url, title, closeDlg = true) {
   persist();
   applyWallpaper();
   if (closeDlg) $('#dlgGallery').close();
-  if (!$('#setDrawer').hidden) $('#wpUrl').value = url;
+  if (!$('#sidePanel').hidden) $('#wpUrl').value = url;
   toast(`已应用「${title || '自定义壁纸'}」，配置将自动同步`);
 }
 
@@ -771,7 +771,7 @@ function applyAppearance() {
   $('#btnRandomWall').hidden = !s.showRandomWallBtn;
 }
 
-function openSettings() {
+function fillSettingsPane() {
   const s = state.data.settings;
   $('#tgSitesNewTab').checked = s.openSitesNewTab;
   $('#tgSearchNewTab').checked = s.openSearchNewTab;
@@ -816,8 +816,17 @@ function openSettings() {
   $('#wpUrl').value = s.customWallpaper || '';
   $('#optBingDaily').checked = !!s.bingDaily;
   $$('.range-row input').forEach(updateRangeFill);
-  $('#setDrawerMask').hidden = false;
-  $('#setDrawer').hidden = false;
+}
+
+/** 打开侧边面板（三 tab：添加 / 我的 / 设置），对齐 inftab 汉堡交互 */
+function openPanel(tab) {
+  $('#dirMask').hidden = false;
+  $('#sidePanel').hidden = false;
+  $$('.sp-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  $$('.sp-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === tab));
+  if (tab === 'settings') fillSettingsPane();
+  if (tab === 'mine') { fillSyncDialog(); renderBackups(); }
+  if (tab === 'add') { renderDirCats(); renderDirList(); }
 }
 
 /* ---------- 布局预设 ---------- */
@@ -1065,7 +1074,7 @@ function flipPage(delta) {
 
 /* ================= 顶部按钮事件（汉堡直接弹出设置抽屉，对齐 inftab） ================= */
 function bindTopMenu() {
-  $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); openSettings(); });
+  $('#btnMenu').addEventListener('click', e => { e.stopPropagation(); openPanel('add'); });
   $('#logo').addEventListener('click', () => $('#dlgAbout').showModal());
   $('#btnRandomWall').addEventListener('click', async e => {
     const btn = e.currentTarget;
@@ -1125,9 +1134,9 @@ function updateRangeFill(el) {
   el.style.setProperty('--p', p.toFixed(1) + '%');
 }
 
-function closeSetDrawer() {
-  $('#setDrawerMask').hidden = true;
-  $('#setDrawer').hidden = true;
+function closePanel() {
+  $('#dirMask').hidden = true;
+  $('#sidePanel').hidden = true;
 }
 
 function toggleEditMode() {
@@ -1139,27 +1148,25 @@ function toggleEditMode() {
 }
 
 function bindSettingsDialog() {
+  // 三个 tab 切换
+  $$('.sp-tab').forEach(t => t.addEventListener('click', () => openPanel(t.dataset.tab)));
   // 抽屉快捷操作区
-  $('#actAdd').addEventListener('click', () => openSiteDialog(null));
-  $('#actDir').addEventListener('click', () => { closeSetDrawer(); openDirectory(); });
-  $('#actSync').addEventListener('click', () => { fillSyncDialog(); $('#dlgSync').showModal(); });
   $('#actEdit').addEventListener('click', toggleEditMode);
   $('#actImport').addEventListener('click', () => $('#importFile').click());
+  $('#actAddCustom').addEventListener('click', () => openSiteDialog(null));
   $('#actExport').addEventListener('click', exportData);
   $('#actLoad').addEventListener('click', loadDefaultData);
-  $('#actAbout').addEventListener('click', () => $('#dlgAbout').showModal());
+  // 关于入口保留在右下角风车
   // 设置抽屉：分区折叠/展开
-  $('#setDrawer').addEventListener('click', e => {
+  $('#sidePanel').addEventListener('click', e => {
     const head = e.target.closest('.set-head');
     if (!head) return;
     const card = head.closest('.set-card');
     card.classList.toggle('collapsed');
     head.querySelector('.cl').textContent = card.classList.contains('collapsed') ? '+' : '—';
   });
-  const closeDrawer = closeSetDrawer;
-  $('#setDrawerClose').addEventListener('click', closeDrawer);
-  $('#setDrawerMask').addEventListener('click', closeDrawer);
-  $('#setDrawerDone').addEventListener('click', closeDrawer);
+  $('#spClose').addEventListener('click', closePanel);
+  $('#dirMask').addEventListener('click', closePanel);
   $('#btnAddEngine').addEventListener('click', () => openEngineDialog(null));
   $('#btnGallery').addEventListener('click', openGallery);
   $('#bingRefresh').addEventListener('click', loadBingGallery);
@@ -1254,7 +1261,7 @@ function bindSettingsDialog() {
     state.page = 0;
     persist();
     renderAll();
-    openSettings();
+    openPanel('settings');
     toast('已还原默认设置');
   });
 }
@@ -1609,7 +1616,7 @@ function bindEvents() {
 
   // 键盘
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { toggleEngineMenu(false); hideSug(); closeSetDrawer(); $('#ctxMenu').hidden = true; }
+    if (e.key === 'Escape') { toggleEngineMenu(false); hideSug(); closePanel(); $('#ctxMenu').hidden = true; }
     const tag = document.activeElement.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if ((e.key === '/' && !typing) || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
@@ -1815,20 +1822,6 @@ const SITE_DIRECTORY = [
 
 let dirCat = '全部', dirQ = '';
 
-function openDirectory() {
-  dirQ = '';
-  $('#dirSearch').value = '';
-  renderDirCats();
-  renderDirList();
-  $('#dirMask').hidden = false;
-  $('#dirPanel').hidden = false;
-}
-
-function closeDirectory() {
-  $('#dirMask').hidden = true;
-  $('#dirPanel').hidden = true;
-}
-
 function dirIconHTML(entry) {
   const letter = `<span class="ph" style="background:${tint(entry[0])}">${escapeHtml(entry[0][0])}</span>`;
   let host = '';
@@ -1950,11 +1943,9 @@ function advanceIcon(img) {
 }
 
 function bindDirectory() {
-  $('#dirClose').addEventListener('click', closeDirectory);
-  $('#dirMask').addEventListener('click', closeDirectory);
+  $('#dirMask').addEventListener('click', closePanel);
   $('#dirSearch').addEventListener('input', e => { dirQ = e.target.value.trim(); renderDirList(); });
   addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !$('#dirPanel').hidden) closeDirectory();
   });
 }
 

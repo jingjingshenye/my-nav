@@ -970,3 +970,36 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 }
 .drawer-actions .act:hover { background: var(--glass-2); }
 .drawer-actions .act.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+
+/* ---------- 三 tab 侧边面板（添加 / 我的 / 设置） ---------- */
+.side-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(780px, 96vw); z-index: 80;
+  background: #fff; box-shadow: -16px 0 60px rgba(0, 0, 0, .22);
+  display: flex; flex-direction: column;
+}
+.sp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-bottom: 1px solid var(--line); background: #fff;
+}
+.sp-tabs { display: flex; gap: 4px; }
+.sp-tab {
+  border: none; background: none; cursor: pointer;
+  padding: 8px 16px; border-radius: 8px;
+  font-size: 13.5px; color: #555;
+  display: flex; align-items: center; gap: 6px;
+}
+.sp-tab b { font-weight: 700; }
+.sp-tab:hover { background: var(--glass-2); }
+.sp-tab.active { background: var(--acc); color: #fff; }
+.sp-pane { flex: 1; min-height: 0; overflow: auto; padding: 16px 18px; }
+.sp-pane.active { display: block; }
+.sp-add-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+.sp-add-bar input {
+  flex: 1; border: 1px solid var(--line-2); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; outline: none;
+}
+.sp-add-bar input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px rgba(0, 0, 0, .08); }
+
+.sp-pane { display: none; }
+.sp-pane.active { display: block; }
