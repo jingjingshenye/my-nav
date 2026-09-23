@@ -1158,15 +1158,19 @@ function renderEngineMenu() {
 }
 
 function engineGlyphHTML(eng) {
-  const glyph = `<span class="eng-glyph" style="background:${eng.color || tint(eng.name)}">${escapeHtml(eng.glyph || (eng.name || '?')[0])}</span>`;
+  // favicon 覆盖在字母色块上（img 必须位于 .eng-glyph 内部，依赖 .eng-glyph img 绝对定位规则）
+  let inner = escapeHtml(eng.glyph || (eng.name || '?')[0]);
   let host = '';
-  try { host = new URL(eng.urls.html).host; } catch { return glyph; }
-  const sources = [
-    `https://${host}/favicon.ico`,
-    `https://icons.duckduckgo.com/ip3/${host}.ico`,
-    `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
-  ].map(u => escapeHtml(u)).join('|');
-  return `${glyph}<img src="${(sources.split('|'))[0]}" data-sources="${sources}" alt="" loading="lazy">`;
+  try { host = new URL(eng.urls.html).host; } catch { host = ''; }
+  if (host) {
+    const sources = [
+      `https://${host}/favicon.ico`,
+      `https://icons.duckduckgo.com/ip3/${host}.ico`,
+      `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
+    ].map(u => escapeHtml(u)).join('|');
+    inner += `<img src="${sources.split('|')[0]}" data-sources="${sources}" alt="" loading="lazy">`;
+  }
+  return `<span class="eng-glyph" style="background:${eng.color || tint(eng.name)}">${inner}</span>`;
 }
 
 function buildSearchUrl(eng, typeId, q) {
