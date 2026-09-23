@@ -789,18 +789,28 @@ async function maybeAutoBingDaily() {
   toast('已自动更换今日必应壁纸');
 }
 
-/** 图标多源回退：依次尝试，直到拿到可用图标；全部失败则显示字母头像 */
-function iconSources(site) {
+/** 统一多源图标回退链：依次尝试直到拿到可用图标；全部失败则显示字母头像。
+ *  顺序兼顾国内可达性与清晰度：聚合源 → 站点自身(含 apple-touch 高清) → Clearbit/unavatar 等品牌源 → 海外聚合源 */
+function sourceChainFor(url, size = 128) {
   let host;
-  try { host = new URL(site.url).host; } catch { return []; }
-  // 图标直接铺满圆形，优先大尺寸图源（更清晰），失败自动降级到下一个
-  return [
+  try { host = new URL(url).host; } catch { return []; }
+  const bare = host.replace(/^www\./, '');
+  const list = [
     `https://favicon.im/${host}?larger=true`,
-    `https://api.iowen.cn/favicon/${host}.png`,
-    `https://www.google.com/s2/favicons?domain=${host}&sz=128`,
     `https://${host}/favicon.ico`,
-    `https://icons.duckduckgo.com/ip3/${host}.ico`,
+    `https://${host}/apple-touch-icon.png`,
+    `https://logo.clearbit.com/${host}`,
+    `https://unavatar.io/${host}?fallback=false`,
+    `https://api.faviconkit.com/${bare}/144`,
+    `https://www.google.com/s2/favicons?domain=${bare}&sz=${size}`,
+    `https://icons.duckduckgo.com/ip3/${bare}.ico`,
+    `https://favicon.im/${bare}?larger=true`,
   ];
+  return [...new Set(list)];
+}
+
+function iconSources(site) {
+  return sourceChainFor(site.url);
 }
 
 function iconHTML(site) {
@@ -814,7 +824,9 @@ function iconHTML(site) {
   if (site.icon) return `${ph}<img src="${escapeHtml(site.icon)}" alt="" loading="lazy" draggable="false">`;
   const sources = iconSources(site);
   if (!sources.length) return ph;
-  return `${ph}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" alt="" loading="lazy" draggable="false">`;
+  let host = '';
+  try { host = new URL(site.url).host; } catch { return ph; }
+  return `${ph}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" data-icache="${escapeHtml(host)}" alt="" loading="lazy" draggable="false">`;
 }
 
 // 本地图标 blob -> objectURL 缓存
@@ -832,6 +844,52 @@ async function hydrateIdbIcons(root) {
     } catch { img.remove(); }
   }
 }
+
+/** 图标缓存：图标首次加载成功后记入 IndexedDB，此后优先直出。
+ *  图片本体可跨域读取时存 Blob（本地直出、离线可用）；否则退化为「记住可用源地址」，
+ *  下次直接从上次成功的图源开始，跳过前面超时/失效的源 */
+const iconCacheUrls = new Map();
+const iconCacheDone = new Set();
+
+function hydrateIconCache(root) {
+  root.querySelectorAll('img[data-icache]').forEach(img => {
+    const host = img.dataset.icache;
+    const hit = iconCacheUrls.get(host);
+    if (hit) { img.removeAttribute('data-sources'); img.src = hit; return; }
+    if (img.dataset.sources) armImgTimeout(img);
+    idbGet('icache:' + host).then(rec => {
+      if (!rec || !img.isConnected) return;
+      if (rec instanceof Blob) {
+        const url = URL.createObjectURL(rec);
+        iconCacheUrls.set(host, url);
+        img.removeAttribute('data-sources');
+        img.src = url;
+      } else if (rec.u) {
+        // 记住的可用源：直接从它开始；保留回退链，万一这次失效还能继续降级
+        if (img.dataset.sources.split('|').includes(rec.u)) { img.src = rec.u; iconCacheDone.add(host); }
+      }
+    }).catch(() => {});
+  });
+}
+
+// 成功加载的远程图标异步入库；每站点每会话只记一次
+document.addEventListener('load', e => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement)) return;
+  if (img.dataset.sources) clearTimeout(imgTimers.get(img)); // 加载成功，解除超时
+  if (!img.dataset.icache || !img.dataset.sources) return;
+  if (!/^https?:/.test(img.src)) return; // 已是本地 blob 缓存
+  const host = img.dataset.icache;
+  if (iconCacheDone.has(host)) return;
+  iconCacheDone.add(host);
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8000); // 抓取超时：退化为只记源地址
+  fetch(img.src, { mode: 'cors', signal: ctl.signal }).then(r => (r.ok ? r.blob() : Promise.reject(new Error('bad status')))).then(b => {
+    clearTimeout(timer);
+    if (!b || !b.size || b.size > 300 * 1024) return Promise.reject(new Error('skip size'));
+    return idbPut('icache:' + host, b);
+  }).catch(() => { clearTimeout(timer); idbPut('icache:' + host, { u: img.src }).catch(() => {}); });
+}, true);
 
 function cardEl(entry, idx = 0) {
   const a = document.createElement('a');
@@ -1004,6 +1062,7 @@ function renderGrid() {
   showPage(state.page);
   bindSortables();
   hydrateIdbIcons(pagesBox);
+  hydrateIconCache(pagesBox);
   applyI18n();
 }
 
@@ -1248,6 +1307,7 @@ function renderFolderView() {
   add.addEventListener('click', e => { e.preventDefault(); openSiteDialog(null, { parent: f.id }); });
   box.append(add);
   hydrateIdbIcons(box);
+  hydrateIconCache(box);
 }
 
 /* ================= 编辑图标侧边面板（对齐 inftab） ================= */
@@ -2463,12 +2523,9 @@ function dirIconHTML(entry) {
   const letter = `<span class="ph" style="background:${tint(entry[0])}">${escapeHtml(entry[0][0])}</span>`;
   let host = '';
   try { host = new URL(entry[1]).host; } catch { return letter; }
-  const sources = [
-    `https://${host}/favicon.ico`,
-    `https://icons.duckduckgo.com/ip3/${host}.ico`,
-    `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
-  ];
-  return `${letter}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" alt="" loading="lazy">`;
+  const sources = sourceChainFor(entry[1], 64);
+  if (!sources.length) return letter;
+  return `${letter}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" data-icache="${escapeHtml(host)}" alt="" loading="lazy">`;
 }
 
 function renderDirCats() {
@@ -2572,10 +2629,21 @@ function saveBackupNode() {
   localStorage.setItem(BACKUP_KEY, JSON.stringify(arr.slice(0, 10)));
 }
 
+/** 单源加载超时即切换下一源，避免某个图源挂起长时间卡住整条回退链 */
+const imgTimers = new WeakMap();
+function armImgTimeout(img, ms = 6000) {
+  if (img.complete) return;
+  clearTimeout(imgTimers.get(img));
+  imgTimers.set(img, setTimeout(() => {
+    if (!img.isConnected || img.complete) return;
+    advanceIcon(img);
+  }, ms));
+}
+
 function advanceIcon(img) {
   const list = (img.dataset.sources || '').split('|').filter(Boolean);
   const i = list.indexOf(img.getAttribute('src') || '');
-  if (i >= 0 && i + 1 < list.length) img.src = list[i + 1];
+  if (i >= 0 && i + 1 < list.length) { img.src = list[i + 1]; armImgTimeout(img); }
   else img.remove();
 }
 
