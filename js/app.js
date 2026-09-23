@@ -1127,6 +1127,17 @@ function syncOrderFromDOM() {
 }
 
 let sortableInstances = [];
+let fvSortable = null;
+
+/** 把文件夹浮层内的成员拖拽顺序写回数据（仅调整该文件夹成员的相对顺序） */
+function syncFolderOrderFromDOM(folderId) {
+  const ids = $$('#fvGrid .fv-item').map(el => el.dataset.id).filter(Boolean);
+  const members = new Map(state.data.sites.filter(x => x.parent === folderId).map(x => [x.id, x]));
+  const ordered = ids.map(id => members.get(id)).filter(Boolean);
+  const top = state.data.sites.filter(x => !x.parent);
+  const others = state.data.sites.filter(x => x.parent && x.parent !== folderId);
+  state.data.sites = [...top, ...ordered, ...others];
+}
 function makeSortable(pg) {
   const ins = new Sortable(pg, {
     group: 'sites',
@@ -1284,6 +1295,7 @@ function closeFolder() {
   state.openFolderId = null;
   $('#folderMask').hidden = true;
   $('#folderView').hidden = true;
+  if (fvSortable) { fvSortable.destroy(); fvSortable = null; }
 }
 
 function renderFolderView() {
@@ -1296,9 +1308,12 @@ function renderFolderView() {
   kids.forEach(k => {
     const a = document.createElement('a');
     a.className = 'fv-item';
-    a.href = k.url;
-    a.target = state.data.settings.openSitesNewTab ? '_blank' : '_self';
-    if (a.target === '_blank') a.rel = 'noopener';
+    a.dataset.id = k.id;
+    if (!state.editMode && k.url) {
+      a.href = k.url;
+      a.target = state.data.settings.openSitesNewTab ? '_blank' : '_self';
+      if (a.target === '_blank') a.rel = 'noopener';
+    }
     a.innerHTML = `<span class="icon">${iconHTML(k)}${state.editMode ? `<button class="del" title="删除">${SVG_X}</button>` : ''}</span><span class="label">${escapeHtml(k.name)}</span>`;
     a.addEventListener('click', e => { if (state.editMode) { e.preventDefault(); openSiteDialog(k); } });
     const del = $('.del', a);
@@ -1312,6 +1327,22 @@ function renderFolderView() {
   box.append(add);
   hydrateIdbIcons(box);
   hydrateIconCache(box);
+  // 文件夹内自由排序（仅编辑态；独立分组，不与桌面互拖、无合并语义）
+  if (fvSortable) { fvSortable.destroy(); fvSortable = null; }
+  if (typeof Sortable !== 'undefined') {
+    fvSortable = new Sortable(box, {
+      group: 'folder-sites',
+      animation: 150,
+      disabled: !state.editMode,
+      draggable: '.fv-item:not(.fv-add)',
+      onEnd: () => {
+        if (!state.openFolderId) return;
+        syncFolderOrderFromDOM(state.openFolderId);
+        persist();
+        renderGrid(); // 顺带刷新桌面文件夹缩略块的成员顺序
+      },
+    });
+  }
 }
 
 /* ================= 编辑图标侧边面板（对齐 inftab） ================= */
@@ -1873,6 +1904,7 @@ function setEditMode(on) {
   const b = $('#actEdit');
   b.classList.toggle('on', on);
   b.textContent = on ? '退出编辑' : '编辑模式';
+  if (fvSortable) fvSortable.options.disabled = !on; // 文件夹浮层内同步开/关排序
   renderGrid();
 }
 
