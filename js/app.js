@@ -1463,8 +1463,15 @@ function updateSearchUI() {
     `https://favicon.im/${host}?larger=true`,
   ].map(u => escapeHtml(u)).join('|') : '';
   const img = sources ? `<img class="eng-logo-img" src="${sources.split('|')[0]}" data-sources="${sources}" alt="">` : '';
-  // 白底 + favicon 裁满圆形（与添加列表图标一致）；品牌色仅作字母兜底文字色，不再垫彩色圆底
+  // 白底 + favicon 裁满圆形（与添加列表图标一致）；字母兜底仅在图片加载失败后显示，成功即隐藏
   $('#engineLogo').innerHTML = `<span class="eng-logo-fb" style="color:${eng.color || tint(eng.name)}">${escapeHtml(glyph)}</span>${img}`;
+  const logoIm = $('#engineLogo .eng-logo-img');
+  if (logoIm) {
+    const fbEl = $('#engineLogo .eng-logo-fb');
+    const hideFb = () => { fbEl.style.display = 'none'; };
+    if (logoIm.complete && logoIm.naturalWidth > 0) hideFb();
+    else logoIm.addEventListener('load', hideFb);
+  }
 }
 
 /* ---------- 引擎选择弹层（Logo 下拉，对齐 inftab：全部引擎 + 添加） ---------- */
@@ -1610,7 +1617,7 @@ function bindTopMenu() {
     if (state.editMode && !e.target.closest('.card, .edit-panel, #dirMask, #sidePanel, dialog, .dots, .round-btn, #btnMenu, .iconfind-mask, #folderView')) setEditMode(false);
   }, true);
   document.addEventListener('click', e => {
-    if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target)) toggleEngineMenu(false);
+    if (!$('#engineMenu').hidden && !$('#engineMenu').contains(e.target) && !$('#engineLogo').contains(e.target) && !(e.target.closest && e.target.closest('.icon-dow'))) toggleEngineMenu(false);
     if (!$('#wallMenu').hidden && !$('#wallMenu').contains(e.target)) $('#wallMenu').hidden = true;
   });
   // 对齐 inftab：右键空白处弹出壁纸菜单（图标上的右键在 cardEl 内处理）
@@ -2092,7 +2099,9 @@ function bindEvents() {
     hideSug();
     doSearch();
   });
-  $('#engineLogo').addEventListener('click', e => { e.stopPropagation(); toggleEngineMenu(); });
+  const toggleEngMenu = e => { e.stopPropagation(); toggleEngineMenu(); };
+  $('#engineLogo').addEventListener('click', toggleEngMenu);
+  $('.icon-dow').addEventListener('click', toggleEngMenu);
 
   // 搜索建议
   const input = $('#searchInput');

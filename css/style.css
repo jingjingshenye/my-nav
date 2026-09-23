@@ -850,9 +850,12 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .engine-logo { position: relative; }
 .icon-dow {
   flex: none; font-style: normal;
-  color: #b9bfc6; font-size: 10px;
-  margin-left: -4px; user-select: none;
+  color: #59616c; font-size: 13px;
+  margin-left: 2px; user-select: none; cursor: pointer;
+  text-shadow: 0 1px 3px rgba(255,255,255,.9), 0 0 1px rgba(0,0,0,.2);
+  transition: color .15s ease;
 }
+.icon-dow:hover { color: #1f2328; }
 
 /* 引擎 Logo：真实 favicon 覆盖在字母圆上 */
 .eng-glyph { position: relative; }
