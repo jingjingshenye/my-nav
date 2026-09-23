@@ -13,3 +13,4 @@ Thumbs.db
 # Python / Node 本地服务产物
 __pycache__/
 node_modules/
+.patch_*.py
