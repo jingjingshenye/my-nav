@@ -1,7 +1,7 @@
-import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924c';
-import { setLang, t, applyI18n } from './i18n.js?v=20260924c';
-import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924c';
-import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, sanitizeSites } from './domain/pages.js?v=20260924c';
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924e';
+import { setLang, t, applyI18n } from './i18n.js?v=20260924e';
+import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924e';
+import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924e';
 
 /* ================= 小工具 ================= */
 const $ = (s, el = document) => el.querySelector(s);
@@ -47,6 +47,8 @@ const state = {
   pendingNewPage: false, // 拖到「＋ 新建页」上的标记
   dropPlanIdx: null, // 拖拽落点计划（松手后按此索引精确落位，拖动过程中图标不再互相挤动）
   dropPlanHard: false, // 落点在空页上：落位时附带硬分页，保住「移到该页」的意图
+  dragFromFolder: null, // 从文件夹浮层拖出成员时 = 该文件夹 id
+  dropFolderMergeId: null, // 拖拽悬停的目标文件夹 id（夹并夹，松手生效）
   extraPages: 0, // 编辑态手动新增的空页数（退出编辑自动回收）
   layout: { cols: 6, rows: 3, card: 98 },
 };
@@ -733,6 +735,19 @@ function makeSortable(pg) {
       state.dragging = false;
       const id = evt.item.dataset.id;
       const dragged = state.data.sites.find(x => x.id === id);
+      if (state.dropFolderMergeId && dragged && dragged.folder && state.dropFolderMergeId !== id) {
+        const target = state.dropFolderMergeId;
+        state.dropFolderMergeId = null;
+        state.dropFolderId = null;
+        state.dropMergeId = null;
+        if (mergeFolders(state.data.sites, id, target)) {
+          persist();
+          renderGrid();
+          if (state.openFolderId === target) renderFolderView();
+          toast(t('已合并文件夹'));
+        }
+        return;
+      }
       if (state.dropFolderId && dragged && !dragged.folder && state.dropFolderId !== id) {
         const target = state.dropFolderId;
         state.dropFolderId = null;
@@ -752,11 +767,13 @@ function makeSortable(pg) {
         state.pendingNewPage = false;
         state.dropFolderId = null;
         state.dropMergeId = null;
+        state.dropFolderMergeId = null;
         moveEntryToIndex(id, Infinity, { hardBreak: true });
         return;
       }
       state.dropFolderId = null;
       state.dropMergeId = null;
+      state.dropFolderMergeId = null;
       state.pendingNewPage = false;
       const plan = state.dropPlanIdx;
       const planBreak = state.dropPlanHard;
@@ -879,6 +896,20 @@ function renderFolderView() {
     }
     a.innerHTML = `<span class="icon">${iconHTML(k)}${state.editMode ? `<button class="del" title="删除">${SVG_X}</button>` : ''}</span><span class="label">${escapeHtml(k.name)}</span>`;
     a.addEventListener('click', e => { if (state.editMode) { e.preventDefault(); openSiteDialog(k); } });
+    a.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!state.editMode) return;
+      const m = state.data.sites.find(x => x.id === k.id);
+      if (!m) return;
+      m.parent = '';
+      m.h = 0;
+      moveTopEntry(state.data.sites, k.id, Infinity);
+      persist();
+      renderGrid();
+      renderFolderView();
+      toast(t('已移出到桌面'));
+    });
     const del = $('.del', a);
     if (del) del.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); removeSite(k); });
     box.append(a);
@@ -2001,12 +2032,26 @@ function bindEvents() {
   // 全部走 capture 阶段：Sortable 内部会阻断 dragover 冒泡，bubble 阶段收不到真实拖拽事件
   document.addEventListener('dragstart', e => {
     const card = e.target.closest && e.target.closest('#gridPages .card');
+    // 文件夹浮层内拖成员：目的是「拖出文件夹」，落点由 dragover/drop 的 dragFromFolder 分支接管
+    const fvItem = !card && e.target.closest && e.target.closest('#fvGrid .fv-item:not(.fv-add)');
+    if (fvItem && state.editMode && state.openFolderId) {
+      state.dragging = true;
+      state.dragId = fvItem.dataset.id;
+      state.dragFromFolder = state.openFolderId;
+      state.dropPlanIdx = null;
+      state.dropPlanHard = false;
+      const r2 = fvItem.getBoundingClientRect();
+      grab = r2.width > 0 ? { dx: e.clientX - r2.left, dy: e.clientY - r2.top, w: r2.width, h: r2.height } : null;
+      armedEl = null;
+      return;
+    }
     if (!card || !state.editMode) return;
     state.dragging = true;
     state.dragId = card.dataset.id;
     state.edgePageCreated = false;
     state.dropFolderId = null;
     state.dropMergeId = null;
+    state.dropFolderMergeId = null;
     state.dropPlanIdx = null;
     state.dropPlanHard = false;
     // 记录抓取点偏移与卡片尺寸：dragover 时据此还原拖影的真实矩形，用于重叠度计算
@@ -2035,6 +2080,7 @@ function bindEvents() {
     insertBar.style.left = Math.round((after ? r.right : r.left) - a.left - 3) + 'px';
     insertBar.style.top = Math.round(r.top - a.top) + 'px';
     insertBar.style.height = Math.round(r.height) + 'px';
+    insertBar.style.zIndex = state.dragFromFolder ? 75 : ''; // 文件夹遮罩 z-69，拖出时插入条要可见
     insertBar.classList.add('show');
   };
   // 计算落点：光标在可见页上最近的卡片及其前后，换算成全局顶层索引（移除自身后的坐标）
@@ -2061,7 +2107,7 @@ function bindEvents() {
       const k = allTop.indexOf(ref);
       g = refAfter ? k + 1 : k;
     }
-    state.dropPlanIdx = g <= dIdx ? g : g - 1;
+    state.dropPlanIdx = dIdx < 0 ? g : (g <= dIdx ? g : g - 1); // dIdx<0：拖出物不在桌面，g 即落位索引
     // 落在无卡片的非首页空页：附带硬分页，图标成为该页第一项，新建/稀疏页因此保得住
     state.dropPlanHard = !ref && visIdx > 0;
     if (ref) showInsertBar(ref, refAfter);
@@ -2071,12 +2117,38 @@ function bindEvents() {
     hideMergeHint();
     state.dropFolderId = null;
     state.dropMergeId = null;
+    state.dropFolderMergeId = null;
   };
   const stopEdge = () => { if (edgeTimer) { clearInterval(edgeTimer); edgeTimer = null; } };
   // 松手/拖断：只清视觉与翻页状态；dropFolderId/dropMergeId 留给 Sortable 的 onEnd 消费后清理
   const hideInsertBar = () => { const bar = $('#dragInsert'); if (bar) bar.classList.remove('show'); };
-  const endDragGesture = () => {
+  const endDragGesture = (e) => {
     stopEdge();
+    // 拖出文件夹：drop 时刻记录计划，延迟到 Sortable 的回退/onEnd 跑完再改数据，避免互相踩 DOM
+    if (e && e.type === 'drop' && state.dragFromFolder) {
+      const plan = state.dropPlanIdx;
+      const hard = state.dropPlanHard;
+      const fid = state.dragFromFolder;
+      const mid = state.dragId;
+      state.dropPlanIdx = null;
+      state.dropPlanHard = false;
+      state.dragFromFolder = null;
+      if (plan !== null && plan !== undefined) {
+        setTimeout(() => {
+          if (state.openFolderId !== fid) return;
+          const m = state.data.sites.find(x => x.id === mid);
+          if (!m || m.parent !== fid) return;
+          m.parent = '';
+          m.h = 0;
+          moveTopEntry(state.data.sites, mid, plan, { hardBreak: !!hard });
+          persist();
+          renderGrid();
+          if (state.openFolderId) renderFolderView();
+          toast(t('已移出到桌面'));
+        }, 0);
+      }
+    }
+    state.dragFromFolder = null;
     if (hoverCard) { hoverCard.classList.remove('drop-target', 'merge-target'); hoverCard = null; }
     hideMergeHint();
     hideInsertBar();
@@ -2120,7 +2192,15 @@ function bindEvents() {
     }
     if (!card) {
       clearHover();
-      computeInsertPlan(e.clientX, e.clientY);
+      if (state.dragFromFolder) {
+        const fv = $('#folderView');
+        const fr2 = fv.getBoundingClientRect();
+        const inside = e.clientX >= fr2.left && e.clientX <= fr2.right && e.clientY >= fr2.top && e.clientY <= fr2.bottom;
+        if (inside) { state.dropPlanIdx = null; state.dropPlanHard = false; hideInsertBar(); }
+        else computeInsertPlan(e.clientX, e.clientY);
+      } else {
+        computeInsertPlan(e.clientX, e.clientY);
+      }
     } else if (card !== hoverCard) {
       clearHover();
       hoverCard = card;
@@ -2128,9 +2208,10 @@ function bindEvents() {
       state.dropPlanHard = false;
       const dragged = state.data.sites.find(x => x.id === state.dragId);
       const target = state.data.sites.find(x => x.id === card.dataset.id);
-      if (dragged && !dragged.folder && target) {
-        if (target.folder) { state.dropFolderId = target.id; card.classList.add('drop-target'); showMergeHint(card, t('松手移入文件夹')); }
-        else { state.dropMergeId = target.id; card.classList.add('merge-target'); showMergeHint(card, t('松手合并为文件夹')); }
+      if (dragged && target) {
+        if (!dragged.folder && target.folder) { state.dropFolderId = target.id; card.classList.add('drop-target'); showMergeHint(card, t('松手移入文件夹')); }
+        else if (dragged.folder && target.folder) { state.dropFolderMergeId = target.id; card.classList.add('merge-target'); showMergeHint(card, t('松手合并文件夹')); }
+        else if (!dragged.folder && !target.folder) { state.dropMergeId = target.id; card.classList.add('merge-target'); showMergeHint(card, t('松手合并为文件夹')); }
       }
     } else {
       state.dropPlanIdx = null;

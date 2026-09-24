@@ -68,12 +68,33 @@ export function mergeTopEntries(sites, dragId, targetId, folderId, folderName) {
   return folder;
 }
 
-/** 解散文件夹：成员回到桌面（parent 清空、h 清零），文件夹移除。返回是否成功 */
+/** 解散文件夹：成员按原顺序补入文件夹原位置（而非甩到桌面末尾），
+ *  文件夹的页首标记转移给第一个成员，页面构成不乱。返回是否成功 */
 export function dissolveFolder(sites, folderId) {
-  const folder = sites.find(x => x.id === folderId);
-  if (!folder || !folder.folder) return false;
-  sites.forEach(x => { if (x.parent === folderId) { x.parent = ''; x.h = 0; } });
-  sites.splice(sites.indexOf(folder), 1);
+  const i = sites.findIndex(x => x.id === folderId);
+  if (i < 0) return false;
+  const folder = sites[i];
+  if (!folder.folder) return false;
+  const members = sites.filter(x => x.parent === folderId);
+  const memberSet = new Set(members);
+  // 先摘除文件夹与成员（按对象身份，不受字段改写影响），再把成员插回文件夹原 index
+  // （约定：顶层在前，故 i 即顶层位次）
+  const rest = sites.filter(x => x.id !== folderId && !memberSet.has(x));
+  members.forEach(m => { m.parent = ''; m.h = 0; });
+  if (folder.h && members.length) members[0].h = 1;
+  rest.splice(i, 0, ...members);
+  sites.length = 0;
+  sites.push(...rest);
+  return true;
+}
+
+/** 文件夹合并：src 的全部成员并入 target，src 移除（target 保留名称/位置/页首标记）。返回是否成功 */
+export function mergeFolders(sites, srcId, targetId) {
+  const src = sites.find(x => x.id === srcId);
+  const target = sites.find(x => x.id === targetId);
+  if (!src || !target || src === target || !src.folder || !target.folder) return false;
+  sites.forEach(x => { if (x.parent === srcId) x.parent = targetId; });
+  sites.splice(sites.indexOf(src), 1);
   return true;
 }
 

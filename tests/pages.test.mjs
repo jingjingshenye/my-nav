@@ -7,6 +7,7 @@ import {
   moveIntoFolder,
   mergeTopEntries,
   dissolveFolder,
+  mergeFolders,
   sanitizeSites,
 } from '../js/domain/pages.js';
 
@@ -94,11 +95,32 @@ test('mergeTopEntries：文件夹与文件夹不能合并', () => {
   assert.equal(mergeTopEntries(sites, 'a', 'b', 'fx', 'x'), null);
 });
 
-test('dissolveFolder：成员回到桌面且 h 清零，文件夹移除', () => {
-  const sites = [mk('f', { folder: true }), mk('m1', { parent: 'f' }), mk('m2', { parent: 'f' }), mk('a')];
+test('dissolveFolder：成员按原顺序补入文件夹原位置，h 清零，文件夹移除', () => {
+  const sites = [mk('a'), mk('f', { folder: true }), mk('m1', { parent: 'f' }), mk('m2', { parent: 'f' }), mk('b')];
   assert.equal(dissolveFolder(sites, 'f'), true);
   assert.equal(sites.some(s => s.id === 'f'), false);
-  assert.deepEqual(sites.map(s => [s.id, s.parent, s.h]), [['m1', '', 0], ['m2', '', 0], ['a', '', 0]]);
+  assert.deepEqual(sites.map(s => [s.id, s.parent, s.h]), [['a', '', 0], ['m1', '', 0], ['m2', '', 0], ['b', '', 0]]); // 成员回 f 原位
+});
+
+test('dissolveFolder：页首文件夹解散时标记转移给第一个成员', () => {
+  const sites = [mk('a'), mk('f', { folder: true, h: 1 }), mk('m1', { parent: 'f' }), mk('m2', { parent: 'f' })];
+  dissolveFolder(sites, 'f');
+  assert.deepEqual(sites.map(s => [s.id, s.h]), [['a', 0], ['m1', 1], ['m2', 0]]); // m1 接棒页首
+});
+
+test('mergeFolders：src 全部成员并入 target，src 移除，target 位置与标记保留', () => {
+  const sites = [mk('fa', { folder: true }), mk('m1', { parent: 'fa' }), mk('m2', { parent: 'fa' }), mk('fb', { folder: true, h: 1 }), mk('m3', { parent: 'fb' })];
+  assert.equal(mergeFolders(sites, 'fa', 'fb'), true);
+  assert.equal(sites.some(s => s.id === 'fa'), false);
+  assert.deepEqual(sites.filter(s => s.parent === 'fb').map(s => s.id), ['m1', 'm2', 'm3']);
+  const fb = sites.find(s => s.id === 'fb');
+  assert.equal(fb.h, 1); // target 的页首标记保留
+  assert.deepEqual(sites.filter(s => !s.parent).map(s => s.id), ['fb']);
+});
+
+test('mergeFolders：文件夹 x 普通图标 拒绝', () => {
+  const sites = [mk('fa', { folder: true }), mk('a')];
+  assert.equal(mergeFolders(sites, 'fa', 'a'), false);
 });
 
 test('transferHardBreak：无标记时是空操作', () => {
