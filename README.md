@@ -29,6 +29,12 @@ npx serve .
 
 打开 <http://localhost:8080>。
 
+领域逻辑（页面构成操作、数据规范化）抽在纯模块里，可直接跑单元测试（无需浏览器）：
+
+```bash
+node --test tests/
+```
+
 ## 部署
 
 ### GitHub Pages（在线地址）
