@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="观澜 · 观水有术，必观其澜——极简新标签页导航，数据云端同步，随处可用">
+  <title>观澜 · 新标签页</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css?v=20260924j">
+</head>
+<body>
+  <div class="wallpaper" id="wallpaper"></div>
+  <div class="wallpaper-mask"></div>
+
+  <header class="topbar">
+    <button class="round-btn" id="btnMenu" title="菜单" aria-label="菜单">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+
+
+  </header>
+
+  <main class="stage">
+    <section class="search-area" id="searchArea">
+      <div class="engine-tabs" id="engineTabs" role="tablist"></div>
+      <form class="search-bar" id="searchForm">
+        <button type="button" class="engine-logo" id="engineLogo" title="切换搜索引擎"></button><i class="icon-dow" aria-hidden="true">&#9662;</i>
+        <input id="searchInput" type="text" placeholder="输入并搜索" autocomplete="off" spellcheck="false">
+        <button type="submit" class="search-btn" id="searchBtn" hidden>搜索</button>
+        <nav class="menu engine-menu" id="engineMenu" hidden></nav>
+      </form>
+      <ul class="sug-drop" id="sugDrop" hidden></ul>
+    </section>
+
+    <section class="grid-area" id="gridArea">
+      <div class="grid-arrow prev" id="gridPrev">‹</div>
+      <div class="grid-pages" id="gridPages"></div>
+      <div class="grid-arrow next" id="gridNext">›</div>
+    </section>
+    <div class="dots" id="dots"></div>
+  </main>
+
+
+  <!-- 文件夹浮层（点开桌面文件夹） -->
+  <div class="folder-mask" id="folderMask" hidden></div>
+  <div class="folder-view" id="folderView" hidden>
+    <div class="fv-head">
+      <h3 id="fvTitle">文件夹</h3>
+      <span class="fv-hint" id="fvHint"></span>
+      <button type="button" class="dlg-close" id="fvClose" title="关闭">&times;</button>
+    </div>
+    <div class="fv-grid" id="fvGrid"></div>
+  </div>
+
+  <!-- 编辑图标侧边面板（对齐 inftab：右键图标进入编辑，点图标弹出） -->
+  <div class="edit-mask" id="editMask" hidden></div>
+  <aside class="edit-panel" id="editPanel" hidden>
+    <button type="button" class="edit-close" id="editPanelClose" title="关闭">&times;</button>
+    <h3 id="editDlgTitle">编辑图标</h3>
+    <div class="edit-card">
+      <label class="edit-field" id="editUrlField">网站地址
+        <input id="editUrl" placeholder="https://www.example.com">
+      </label>
+      <label class="edit-field">网站名称
+        <input id="editName" maxlength="24" placeholder="如：百度">
+      </label>
+      <div class="edit-field" id="editPickField">选择图标
+        <div class="icon-pick" id="iconPick"></div>
+        <input type="file" id="iconFile" accept="image/*" hidden>
+      </div>
+      <p class="form-error" id="editFormError" hidden></p>
+      <button type="button" class="edit-ok" id="editOk">确定</button>
+      <button type="button" class="edit-cancel" id="editCancel">取消</button>
+    </div>
+  </aside>
+
+  <!-- 壁纸右键菜单（对齐 inftab） -->
+  <div class="ctx-menu" id="wallMenu" hidden></div>
+
+  <!-- 搜索图标浮层（Ctrl + F） -->
+  <div class="iconfind-mask" id="iconFind" hidden>
+    <div class="iconfind-box">
+      <input id="iconFindInput" placeholder="输入名称筛选图标，回车打开第一个匹配">
+      <p class="hint">Esc 取消筛选</p>
+    </div>
+  </div>
+
+  <!-- 设置抽屉 -->
+  <div class="dir-mask" id="dirMask" hidden></div>
+  <aside class="side-panel" id="sidePanel" hidden>
+    <div class="sp-head">
+      <nav class="sp-tabs">
+        <button type="button" class="sp-tab active" data-tab="add">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>
+          <span>添加</span>
+        </button>
+        <button type="button" class="sp-tab" data-tab="mine">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.6-3.6 3.4-5.6 7-5.6s6.4 2 7 5.6"/></svg>
+          <span>我的</span>
+        </button>
+        <button type="button" class="sp-tab" data-tab="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.64 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.09a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+          <span>设置</span>
+        </button>
+      </nav>
+      <button class="dlg-close" id="spClose" title="关闭">&times;</button>
+    </div>
+
+    <!-- Tab 1：添加（左侧竖排分类 + 右侧单列站点，对齐 inftab） -->
+    <div class="sp-pane active" data-pane="add">
+      <div class="sp-add-bar">
+        <div class="dir-search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="dirSearch" placeholder="搜索网站">
+        </div>
+        <button type="button" class="btn dark" id="actAddCustom">＋ 自定义</button>
+      </div>
+      <div class="add-body">
+        <nav class="dir-cats" id="dirCats"></nav>
+        <div class="dir-list" id="dirList"></div>
+      </div>
+    </div>
+
+    <!-- Tab 2：我的（同步 / 备份与恢复，卡片行布局对齐 inftab） -->
+    <div class="sp-pane" data-pane="mine">
+      <section class="set-card">
+        <div class="set-head"><h4>云同步</h4></div>
+        <div class="set-body">
+          <div class="set-row"><span>与其他设备保持同步</span><label class="switch"><input type="checkbox" id="syncAuto"><i></i></label></div>
+          <div class="set-row"><span>上次同步时间</span><b class="sync-time" id="syncTimeText">从未</b></div>
+          <div class="set-row"><span>同步方式</span>
+            <select id="syncType">
+              <option value="local">仅本地</option>
+              <option value="gitee-gist">Gitee Gist 云端</option>
+              <option value="github-gist">GitHub Gist 云端</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="set-card" id="giteeFields" hidden>
+        <div class="set-head"><h4 id="syncCfgTitle">Gitee 云端配置</h4></div>
+        <div class="set-body">
+          <label class="plain">访问令牌 Token
+            <input id="syncToken" type="password" placeholder="gtp_xxxxxxxx" autocomplete="off">
+          </label>
+          <p class="hint" id="syncTokenHint"></p>
+          <label class="plain">Gist ID
+            <input id="syncGistId" placeholder="留空则推送时自动创建">
+          </label>
+          <label class="plain">数据文件名
+            <input id="syncFile" placeholder="nav-data.json">
+          </label>
+          <p class="sync-status" id="syncStatus"></p>
+          <div class="backup-bar">
+            <button type="button" class="btn primary" id="syncPush">推送到云端</button>
+            <button type="button" class="btn" id="syncPull">从云端拉取</button>
+          </div>
+          <div class="backup-bar">
+            <button type="button" class="btn" id="syncPickGist">查看我的 Gist</button>
+            <span class="hint">开发/正式等不同浏览器环境各自保存配置；用「查看我的 Gist」复用同一个实例，避免散落</span>
+          </div>
+          <ul class="backup-list" id="gistList" hidden></ul>
+        </div>
+      </section>
+
+      <section class="set-card">
+        <div class="set-head"><h4>备份与恢复</h4></div>
+        <div class="set-body">
+          <div class="backup-bar">
+            <button type="button" class="btn" id="btnBackupNow">立即备份</button>
+            <button type="button" class="btn" id="actImport">导入</button>
+            <button type="button" class="btn" id="actExport">导出</button>
+            <button type="button" class="btn" id="actLoad">内置数据</button>
+            <button type="button" class="btn" id="actEdit">编辑模式</button>
+          </div>
+          <ul class="backup-list" id="backupList"></ul>
+        </div>
+      </section>
+    </div>
+
+    <!-- Tab 3：设置 -->
+    <div class="sp-pane" data-pane="settings">
+
+      <section class="set-card">
+        <div class="set-head"><h4>壁纸</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="wp-grid" id="wpGrid"></div>
+          <label class="mt">自定义壁纸 URL
+            <input id="wpUrl" placeholder="https://.../wallpaper.jpg">
+          </label>
+          <div class="wp-actions">
+            <button type="button" class="btn" id="btnGallery">壁纸库（必应每日 / 随机美图）…</button>
+            <label class="btn" id="btnWallUpload">上传本地图片<input type="file" id="wallFile" accept="image/*" hidden></label>
+            <label class="check"><input type="checkbox" id="optBingDaily"> 每天自动更换必应壁纸</label>
+          </div>
+          <div class="set-row col"><span>壁纸遮罩</span>
+            <div class="range-row"><input type="range" id="rgWallOpacity" min="0" max="100" step="5"><b class="range-val" id="rgWallOpacityVal">40%</b></div>
+          </div>
+          <div class="set-row col"><span>壁纸模糊</span>
+            <div class="range-row"><input type="range" id="rgWallBlur" min="0" max="20" step="1"><b class="range-val" id="rgWallBlurVal">0</b></div>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>图标</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>隐藏图标名称</span><label class="switch"><input type="checkbox" id="tgHideName"><i></i></label></div>
+          <div class="set-row"><span>图标阴影</span><label class="switch"><input type="checkbox" id="tgIconShadow"><i></i></label></div>
+          <div class="set-row"><span>启动动画</span><label class="switch"><input type="checkbox" id="tgIconIntro"><i></i></label></div>
+          <div class="set-row col"><span>图标圆角</span>
+            <div class="range-row"><input type="range" id="rgIconRadius" min="0" max="100" step="5"><b class="range-val" id="rgIconRadiusVal">50%</b></div>
+          </div>
+          <div class="set-row col"><span>图标不透明度</span>
+            <div class="range-row"><input type="range" id="rgIconOpacity" min="30" max="100" step="5"><b class="range-val" id="rgIconOpacityVal">100%</b></div>
+          </div>
+          <div class="set-row col"><span>图标大小</span>
+            <div class="range-row"><input type="range" id="rgIconScale" min="50" max="120" step="5"><b class="range-val" id="rgIconScaleVal">71%</b></div>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>搜索框</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>隐藏搜索框</span><label class="switch"><input type="checkbox" id="tgSearchHide"><i></i></label></div>
+          <div class="set-row"><span>显示搜索建议</span><label class="switch"><input type="checkbox" id="tgSuggest"><i></i></label></div>
+          <div class="set-row"><span>保留搜索框内容</span><label class="switch"><input type="checkbox" id="tgKeepText"><i></i></label></div>
+          <div class="set-row"><span>隐藏搜索类别</span><label class="switch"><input type="checkbox" id="tgHideType"><i></i></label></div>
+          <div class="set-row"><span>隐藏搜索按钮</span><label class="switch"><input type="checkbox" id="tgHideSearchBtn"><i></i></label></div>
+          <div class="set-row col"><span>搜索框大小</span>
+            <div class="range-row"><input type="range" id="rgSearchSize" min="70" max="160" step="5"><b class="range-val" id="rgSearchSizeVal">90%</b></div>
+          </div>
+          <div class="set-row col"><span>搜索框圆角</span>
+            <div class="range-row"><input type="range" id="rgSearchRadius" min="0" max="60" step="5"><b class="range-val" id="rgSearchRadiusVal">20%</b></div>
+          </div>
+          <div class="set-row col"><span>搜索框不透明度</span>
+            <div class="range-row"><input type="range" id="rgSearchOpacity" min="30" max="100" step="5"><b class="range-val" id="rgSearchOpacityVal">100%</b></div>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>视图</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>翻页按钮</span><label class="switch"><input type="checkbox" id="tgPageBtns"><i></i></label></div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>字体</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>字体阴影</span><label class="switch"><input type="checkbox" id="tgFontShadow"><i></i></label></div>
+          <div class="set-row col"><span>字体大小</span>
+            <div class="range-row"><input type="range" id="rgFontSize" min="10" max="20" step="1"><b class="range-val" id="rgFontSizeVal">13</b></div>
+          </div>
+          <div class="set-row col"><span>字体颜色</span>
+            <div class="swatches" id="fontSwatches"></div>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>布局</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="layout-presets" id="layoutPresets"></div>
+          <div class="set-row col"><span>行数</span>
+            <div class="range-row"><input type="range" id="rgLayoutRows" min="1" max="10" step="1"><b class="range-val" id="rgLayoutRowsVal">5</b></div>
+          </div>
+          <div class="set-row col"><span>列数</span>
+            <div class="range-row"><input type="range" id="rgLayoutCols" min="2" max="16" step="1"><b class="range-val" id="rgLayoutColsVal">8</b></div>
+          </div>
+          <div class="set-row col"><span>间距</span>
+            <div class="range-row"><input type="range" id="rgLayoutGap" min="0" max="200" step="10"><b class="range-val" id="rgLayoutGapVal">100%</b></div>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>目标打开方式</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>在新标签页中打开网站</span><label class="switch"><input type="checkbox" id="tgSitesNewTab"><i></i></label></div>
+          <div class="set-row"><span>在新标签页中打开第三方搜索结果</span><label class="switch"><input type="checkbox" id="tgSearchNewTab"><i></i></label></div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>语言</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <div class="set-row"><span>语言选择</span>
+            <select id="selLang">
+              <option value="zh">简体中文</option>
+              <option value="zh-tw">繁體中文</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>搜索引擎</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <p class="pane-tip">点搜索框左侧 Logo 可快速切换；「添加」里可从引擎库启用内置引擎。</p>
+          <div class="engine-list" id="engineList"></div>
+          <button type="button" class="btn" id="btnAddEngine">＋ 添加搜索引擎</button>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>动画</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <p class="pane-tip">作用于图标入场动画</p>
+          <div class="ease-cards" id="easeCards"></div>
+        </div>
+      </section>
+      <section class="set-card">
+        <div class="set-head"><h4>重置设置</h4><button type="button" class="cl">&mdash;</button></div>
+        <div class="set-body">
+          <p class="pane-tip">恢复默认外观与搜索设置；网址与云同步配置会保留。</p>
+          <button type="button" class="btn danger-btn" id="btnResetSettings">还原设置</button>
+        </div>
+      </section>
+        </div>
+  </aside>
+
+  <!-- 壁纸库 -->
+  <dialog id="dlgGallery">
+    <div class="dlg-head">
+      <h3>壁纸库</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body">
+      <section id="favSection" hidden>
+        <h4>我的收藏</h4>
+        <div class="gal-grid" id="favGrid"></div>
+      </section>
+      <section>
+        <h4>必应每日壁纸 <button type="button" class="mini-btn" id="bingRefresh">刷新</button></h4>
+        <div class="gal-grid" id="bingGrid"><p class="hint">加载中…</p></div>
+      </section>
+      <section>
+        <h4>随机美图 Picsum <button type="button" class="mini-btn" id="picsumRefresh">换一批</button></h4>
+        <div class="gal-grid" id="picsumGrid"><p class="hint">加载中…</p></div>
+      </section>
+    </div>
+    <div class="dlg-foot">
+      <label class="check"><input type="checkbox" id="optDailyApply"> 每天自动更换为最新必应壁纸</label>
+    </div>
+  </dialog>
+
+  <!-- 添加 / 编辑搜索引擎 -->
+  <dialog id="dlgEngine">
+    <form class="dlg-form" id="engForm" novalidate>
+      <h3 id="engDlgTitle">添加搜索引擎</h3>
+      <input type="hidden" id="engId">
+      <div id="engCatalogBox">
+        <h4 class="dlg-sub">从引擎库启用</h4>
+        <div class="eng-catalog" id="engCatalog"></div>
+        <h4 class="dlg-sub">或添加自定义引擎</h4>
+      </div>
+      <label>名称
+        <input id="engName" maxlength="16" placeholder="如：掘金">
+      </label>
+      <label>网页搜索地址 <span class="hint">%s 代表搜索词；不含 %s 则直接在地址末尾拼接</span>
+        <input id="engHtml" placeholder="https://example.com/search?q=%s">
+      </label>
+      <details>
+        <summary>其他搜索类型地址（可选）</summary>
+        <label>图片 photos<input id="engPhotos" placeholder="https://.../images?q=%s"></label>
+        <label>视频 videos<input id="engVideos" placeholder="https://.../videos?q=%s"></label>
+        <label>新闻 news<input id="engNews" placeholder="https://.../news?q=%s"></label>
+        <label>地图 map<input id="engMap" placeholder="https://.../map?q=%s"></label>
+      </details>
+      <p class="form-error" id="engFormError" hidden></p>
+      <div class="dlg-foot">
+        <button type="button" class="btn" data-close>取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+
+
+
+  <!-- 关于 -->
+  <dialog id="dlgAbout">
+    <div class="dlg-head">
+      <h3>关于观澜</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body about">
+      <img src="assets/logo.svg" width="48" height="48" alt="logo">
+      <p><b>观澜</b> · 取自《孟子》「观水有术，必观其澜」——万川归海，由此观澜的极简起始页。</p>
+      <p>数据可保存在本机，也可通过 Gitee Gist 云端同步，走到哪用到哪。</p>
+      <p class="hint">快捷键：/ 或 Ctrl+K 聚焦搜索 · Ctrl+F 搜索图标 · ←/→ 翻页 · 滚轮翻页 · 右键图标进入编辑</p>
+      <p class="hint">在线：<a href="https://jingjingshenye.github.io/my-nav/" target="_blank" rel="noopener">jingjingshenye.github.io/my-nav</a></p>
+      <p class="hint">开源：<a href="https://github.com/jingjingshenye/my-nav" target="_blank" rel="noopener">github.com/jingjingshenye/my-nav</a> · <a href="https://gitee.com/jingjingshenye/nav-page" target="_blank" rel="noopener">gitee.com/jingjingshenye/nav-page</a></p>
+    </div>
+  </dialog>
+
+  <div class="toasts" id="toasts"></div>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+
+  <script src="js/vendor/sortable.min.js"></script>
+  <script type="module" src="js/app.js?v=20260924j"></script>
+</body>
+</html>
