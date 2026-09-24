@@ -1,7 +1,7 @@
-import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924h';
-import { setLang, t, applyI18n } from './i18n.js?v=20260924h';
-import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924h';
-import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924h';
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924i';
+import { setLang, t, applyI18n } from './i18n.js?v=20260924i';
+import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924i';
+import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924i';
 
 /* ================= 小工具 ================= */
 const $ = (s, el = document) => el.querySelector(s);
@@ -1767,6 +1767,54 @@ function bindEngineDialog() {
   });
 }
 
+/* ================= Gist 实例管理（查看 / 复用 / 清理） ================= */
+async function renderGistList() {
+  const box = $('#gistList');
+  saveSyncCfg();
+  const cfg = state.data.settings.sync;
+  if (!isGistType(cfg.type)) { box.hidden = true; return; }
+  box.hidden = false;
+  if (!cfg.token) { box.innerHTML = '<li class="hint">' + t('请先填写访问令牌（Token）') + '</li>'; return; }
+  box.innerHTML = '<li class="hint">' + t('加载中…') + '</li>';
+  try {
+    const rows = await createAdapter(cfg).list();
+    if (!rows.length) { box.innerHTML = '<li class="hint">' + t('账号里没有 Gist') + '</li>'; return; }
+    box.innerHTML = '';
+    rows.forEach(g => {
+      const li = document.createElement('li');
+      const name = document.createElement('span');
+      name.className = 'bt';
+      name.textContent = `${g.id.slice(0, 8)}… ${g.hasData ? '★ ' : ''}${g.description} · ${g.updatedAt ? new Date(g.updatedAt).toLocaleString() : ''}`.trim();
+      const bUse = document.createElement('button');
+      bUse.type = 'button';
+      bUse.className = 'btn';
+      bUse.textContent = t('使用');
+      bUse.addEventListener('click', () => {
+        $('#syncGistId').value = g.id;
+        saveSyncCfg();
+        updateSyncStatus();
+        toast(t('已保存'));
+      });
+      const bDel = document.createElement('button');
+      bDel.type = 'button';
+      bDel.className = 'btn';
+      bDel.textContent = t('删除');
+      bDel.addEventListener('click', async () => {
+        if (!confirm(t('删除该 Gist？不可恢复'))) return;
+        try {
+          await createAdapter(cfg).destroy(g.id);
+          if (cfg.gistId === g.id) { cfg.gistId = ''; $('#syncGistId').value = ''; saveSyncCfg(); updateSyncStatus(); }
+          renderGistList();
+        } catch (e) { toast(t('删除失败：') + e.message, 'error'); }
+      });
+      li.append(name, bUse, bDel);
+      box.append(li);
+    });
+  } catch (e) {
+    box.innerHTML = '<li class="hint">' + t('加载失败：') + e.message + '</li>';
+  }
+}
+
 /* ================= 数据同步对话框 ================= */
 /** 云端配置区随所选平台（Gitee / GitHub）切换标题、令牌提示与占位符 */
 function updateSyncBrandUI(type) {
@@ -1860,6 +1908,7 @@ function bindSyncDialog() {
     toast(t('已创建备份节点'));
   });
   $('#syncType').addEventListener('change', () => updateSyncBrandUI($('#syncType').value));
+  $('#syncPickGist').addEventListener('click', renderGistList);
   $('#syncPull').addEventListener('click', async () => {
     try {
       saveSyncCfg();
@@ -1872,6 +1921,8 @@ function bindSyncDialog() {
   $('#syncPush').addEventListener('click', async () => {
     try {
       saveSyncCfg();
+      const cfg = state.data.settings.sync;
+      if (isGistType(cfg.type) && !cfg.gistId && !confirm(t('未填写 Gist ID，将新建一个云端 Gist，继续？'))) return;
       await pushCloud();
       fillSyncDialog();
     } catch (e) { toast(t('推送失败：') + e.message, 'error'); }

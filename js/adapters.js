@@ -88,7 +88,26 @@ export class GistAdapter {
       try { detail = (await res.text()).slice(0, 200); } catch { /* ignore */ }
       throw new Error(`接口返回 ${res.status} ${detail}`);
     }
+    if (res.status === 204) return null; // DELETE 成功无响应体
     return res.json();
+  }
+
+  /** 认证账号的 Gist 列表（查看/复用/清理，避免同一账号散落多个数据实例） */
+  async list() {
+    const rows = await this.#request('GET', '/gists?per_page=100');
+    if (!Array.isArray(rows)) return [];
+    return rows.map(g => ({
+      id: g.id,
+      description: g.description || '',
+      updatedAt: g.updated_at || '',
+      hasData: !!(g.files && Object.keys(g.files).some(f => f === this.filename)),
+    }));
+  }
+
+  /** 删除指定 Gist（谨慎：不可恢复） */
+  async destroy(id) {
+    await this.#request('DELETE', `/gists/${encodeURIComponent(id)}`);
+    return true;
   }
 
   /** Gist ID 应为一段十六进制字符；填错（如当成名字填了单词）时快速给出可操作的报错 */

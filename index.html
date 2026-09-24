@@ -6,7 +6,7 @@
   <meta name="description" content="观澜 · 观水有术，必观其澜——极简新标签页导航，数据云端同步，随处可用">
   <title>观澜 · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260924h">
+  <link rel="stylesheet" href="css/style.css?v=20260924i">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -156,6 +156,11 @@
             <button type="button" class="btn primary" id="syncPush">推送到云端</button>
             <button type="button" class="btn" id="syncPull">从云端拉取</button>
           </div>
+          <div class="backup-bar">
+            <button type="button" class="btn" id="syncPickGist">查看我的 Gist</button>
+            <span class="hint">开发/正式等不同浏览器环境各自保存配置；用「查看我的 Gist」复用同一个实例，避免散落</span>
+          </div>
+          <ul class="backup-list" id="gistList" hidden></ul>
         </div>
       </section>
 
@@ -389,6 +394,6 @@
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
   <script src="js/vendor/sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=20260924h"></script>
+  <script type="module" src="js/app.js?v=20260924i"></script>
 </body>
 </html>
