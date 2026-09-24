@@ -1,7 +1,7 @@
-import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924g';
-import { setLang, t, applyI18n } from './i18n.js?v=20260924g';
-import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924g';
-import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924g';
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924h';
+import { setLang, t, applyI18n } from './i18n.js?v=20260924h';
+import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924h';
+import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924h';
 
 /* ================= 小工具 ================= */
 const $ = (s, el = document) => el.querySelector(s);
@@ -523,8 +523,7 @@ function cardEl(entry, idx = 0) {
   // 对齐 inftab：右键图标进入编辑状态（×标记）；已在编辑状态时右键 = 直接打开编辑面板
   a.addEventListener('contextmenu', e => {
     e.preventDefault();
-    if (!state.editMode) setEditMode(true);
-    else openSiteDialog(entry);
+    openSiteDialog(entry); // 右键直接编辑该图标（含文件夹改名），无需切换全局状态
   });
   const editGo = $('.edit-go', a);
   if (editGo) editGo.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openSiteDialog(entry); });
@@ -724,8 +723,7 @@ function makeSortable(pg) {
   const ins = new Sortable(pg, {
     group: 'sites',
     animation: 150,
-    disabled: !state.editMode,
-    draggable: '.card',
+    draggable: '.card:not(.add-card)', // 功能卡（添加/新建夹）不可拖
     onStart: evt => {
       state.dragging = true;
       state.dragId = evt.item.dataset.id || null;
@@ -856,10 +854,19 @@ function removeSite(entry) {
     toast(t('已解散文件夹「{n}」，网址回到桌面', entry.name));
     return;
   }
+  const pid = entry.parent;
   removeTopEntry(state.data.sites, entry.id);
+  // iOS 惯例：删掉最后一个成员后空夹自动删除
+  let emptied = false;
+  if (pid) {
+    const folder = state.data.sites.find(x => x.id === pid);
+    emptied = !!(folder && folder.folder && !state.data.sites.some(x => x.parent === pid));
+    if (emptied) state.data.sites = state.data.sites.filter(x => x.id !== pid);
+  }
   persist();
   renderGrid();
-  if (state.openFolderId) renderFolderView();
+  if (emptied && state.openFolderId === pid) closeFolder();
+  else if (state.openFolderId) renderFolderView();
   toast(t('已删除「{n}」', entry.name));
 }
 
@@ -882,6 +889,7 @@ function renderFolderView() {
   const f = state.data.sites.find(x => x.id === state.openFolderId);
   if (!f || !f.folder) { closeFolder(); return; }
   $('#fvTitle').textContent = f.name;
+  $('#fvHint').textContent = t('拖到浮层外移出 · 点标题重命名');
   const kids = state.data.sites.filter(x => x.parent === f.id);
   const box = $('#fvGrid');
   box.innerHTML = '';
@@ -896,20 +904,6 @@ function renderFolderView() {
     }
     a.innerHTML = `<span class="icon">${iconHTML(k)}${state.editMode ? `<button class="del" title="删除">${SVG_X}</button>` : ''}</span><span class="label">${escapeHtml(k.name)}</span>`;
     a.addEventListener('click', e => { if (state.editMode) { e.preventDefault(); openSiteDialog(k); } });
-    a.addEventListener('contextmenu', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!state.editMode) return;
-      const m = state.data.sites.find(x => x.id === k.id);
-      if (!m) return;
-      m.parent = '';
-      m.h = 0;
-      moveTopEntry(state.data.sites, k.id, Infinity);
-      persist();
-      renderGrid();
-      renderFolderView();
-      toast(t('已移出到桌面'));
-    });
     const del = $('.del', a);
     if (del) del.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); removeSite(k); });
     box.append(a);
@@ -927,7 +921,6 @@ function renderFolderView() {
     fvSortable = new Sortable(box, {
       group: 'folder-sites',
       animation: 150,
-      disabled: !state.editMode,
       draggable: '.fv-item:not(.fv-add)',
       onEnd: () => {
         if (!state.openFolderId) return;
@@ -1472,11 +1465,17 @@ function closePanel() {
 function setEditMode(on) {
   if (state.editMode === on) return;
   state.editMode = on;
-  if (!on) state.extraPages = 0; // 退出编辑：手动新增的空页自动回收（对齐 iOS）
+  if (!on) {
+    state.extraPages = 0; // 退出编辑：手动新增的空页自动回收（对齐 iOS）
+    // iOS 惯例：空文件夹不保留（新建后没放入成员的夹子此时一并清理）
+    const before = state.data.sites.length;
+    state.data.sites = state.data.sites.filter(x => !x.folder || state.data.sites.some(m => m.parent === x.id));
+    if (state.data.sites.length !== before && state.openFolderId && !state.data.sites.some(x => x.id === state.openFolderId)) closeFolder();
+  }
   const b = $('#actEdit');
   b.classList.toggle('on', on);
   b.textContent = on ? '退出编辑' : '编辑模式';
-  if (fvSortable) fvSortable.options.disabled = !on; // 文件夹浮层内同步开/关排序
+  if (state.openFolderId) renderFolderView(); // 浮层成员的 × / 链接 / 提示随整理态刷新
   renderGrid();
 }
 
@@ -2011,6 +2010,31 @@ function bindEvents() {
   $('#iconFind').addEventListener('click', e => { if (e.target === e.currentTarget) closeIconFind(); });
 
   // 文件夹浮层
+  $('#fvTitle').addEventListener('click', () => {
+    if (!state.openFolderId) return;
+    const f = state.data.sites.find(x => x.id === state.openFolderId);
+    const h = $('#fvTitle');
+    if (!f || h.querySelector('input')) return;
+    const input = document.createElement('input');
+    input.className = 'fv-rename';
+    input.value = f.name;
+    h.textContent = '';
+    h.append(input);
+    input.focus();
+    input.select();
+    input.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter') input.blur();
+      if (ev.key === 'Escape') { input.value = f.name; input.blur(); }
+    });
+    input.addEventListener('blur', () => {
+      const name = input.value.trim();
+      if (name) f.name = name;
+      persist();
+      renderGrid();
+      renderFolderView();
+      if (name && name !== f.name) toast(t('已保存'));
+    });
+  });
   $('#fvClose').addEventListener('click', closeFolder);
   $('#folderMask').addEventListener('click', closeFolder);
 
@@ -2034,7 +2058,7 @@ function bindEvents() {
     const card = e.target.closest && e.target.closest('#gridPages .card');
     // 文件夹浮层内拖成员：目的是「拖出文件夹」，落点由 dragover/drop 的 dragFromFolder 分支接管
     const fvItem = !card && e.target.closest && e.target.closest('#fvGrid .fv-item:not(.fv-add)');
-    if (fvItem && state.editMode && state.openFolderId) {
+    if (fvItem && state.openFolderId) {
       state.dragging = true;
       state.dragId = fvItem.dataset.id;
       state.dragFromFolder = state.openFolderId;
@@ -2045,7 +2069,7 @@ function bindEvents() {
       armedEl = null;
       return;
     }
-    if (!card || !state.editMode) return;
+    if (!card) return;
     state.dragging = true;
     state.dragId = card.dataset.id;
     state.edgePageCreated = false;
@@ -2141,9 +2165,13 @@ function bindEvents() {
           m.parent = '';
           m.h = 0;
           moveTopEntry(state.data.sites, mid, plan, { hardBreak: !!hard });
+          // iOS 惯例：成员移空后文件夹自动删除
+          const folder = state.data.sites.find(x => x.id === fid);
+          const emptied = !!(folder && folder.folder && !state.data.sites.some(x => x.parent === fid));
+          if (emptied) state.data.sites = state.data.sites.filter(x => x.id !== fid);
           persist();
           renderGrid();
-          if (state.openFolderId) renderFolderView();
+          closeFolder(); // iOS 惯例：拖出到桌面后文件夹收起（未空的夹仍在桌面上）
           toast(t('已移出到桌面'));
         }, 0);
       }
@@ -2165,7 +2193,9 @@ function bindEvents() {
     // 目标判定：按拖影矩形与各卡矩形的重叠系数（交集/较小面积）。≥70% 视为“压住”，
     // 已锁目标降到 45% 才释放（迟滞），避免 Sortable 重排导致的高亮抖动
     let card = null;
-    if (grab) {
+    if (state.dragFromFolder) {
+      armedEl = null; // 拖出文件夹的成员只做落位，不参与桌面的合并/入夹瞄准
+    } else if (grab) {
       const rect = { left: e.clientX - grab.dx, top: e.clientY - grab.dy, right: e.clientX - grab.dx + grab.w, bottom: e.clientY - grab.dy + grab.h };
       const area = grab.w * grab.h;
       const ratios = new Map();
@@ -2197,7 +2227,12 @@ function bindEvents() {
         const fr2 = fv.getBoundingClientRect();
         const inside = e.clientX >= fr2.left && e.clientX <= fr2.right && e.clientY >= fr2.top && e.clientY <= fr2.bottom;
         if (inside) { state.dropPlanIdx = null; state.dropPlanHard = false; hideInsertBar(); }
-        else computeInsertPlan(e.clientX, e.clientY);
+        else {
+          // 关键：目标位置必须 preventDefault 浏览器才允许触发 drop，否则真机拖动松手只会静默取消
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          computeInsertPlan(e.clientX, e.clientY);
+        }
       } else {
         computeInsertPlan(e.clientX, e.clientY);
       }
