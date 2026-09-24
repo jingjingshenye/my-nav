@@ -110,11 +110,12 @@ export class GistAdapter {
     return true;
   }
 
-  /** Gist ID 应为一段十六进制字符；填错（如当成名字填了单词）时快速给出可操作的报错 */
+  /** Gist ID 形态预检：GitHub 为十六进制串，Gitee 为字母数字混合串；
+   *  只拦「当成名字填了单词」这类明显错误，长度不足 8 位必假 */
   #assertGistId() {
     if (!this.gistId) throw new Error('尚未创建云端 Gist');
-    if (!/^[0-9a-f]{8,64}$/i.test(this.gistId)) {
-      throw new Error('Gist ID「' + this.gistId + '」格式不正确（应为一段十六进制字符，不是名字）。清空 Gist ID 后点「推送到云端」会自动新建');
+    if (!/^[0-9a-z][0-9a-z_-]{7,63}$/i.test(this.gistId)) {
+      throw new Error('Gist ID「' + this.gistId + '」格式不正确（应为平台生成的字母数字串，不是名字）。清空 Gist ID 后点「推送到云端」会自动新建');
     }
   }
 

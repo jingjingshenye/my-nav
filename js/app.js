@@ -1,7 +1,7 @@
-import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924i';
-import { setLang, t, applyI18n } from './i18n.js?v=20260924i';
-import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924i';
-import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924i';
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924j';
+import { setLang, t, applyI18n } from './i18n.js?v=20260924j';
+import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924j';
+import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924j';
 
 /* ================= 小工具 ================= */
 const $ = (s, el = document) => el.querySelector(s);
@@ -117,8 +117,15 @@ function persist() {
   if (canAutoSync()) queueCloudPush();
 }
 
+// 自动同步失败提示去重：同一错误 10 分钟内只提示一次，避免连续改动时错误刷屏
+let lastAutoSyncErr = { msg: '', at: 0 };
 const queueCloudPush = debounce(() => {
-  pushCloud(false).catch(err => toast(t('自动同步失败：') + err.message, 'error'));
+  pushCloud(false).catch(err => {
+    const now = Date.now();
+    if (err.message === lastAutoSyncErr.msg && now - lastAutoSyncErr.at < 10 * 60 * 1000) return;
+    lastAutoSyncErr = { msg: err.message, at: now };
+    toast(t('自动同步失败：') + err.message, 'error');
+  });
 }, 1800);
 
 async function pushCloud(notify = true) {
