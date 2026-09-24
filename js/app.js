@@ -1,7 +1,7 @@
-import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924e';
-import { setLang, t, applyI18n } from './i18n.js?v=20260924e';
-import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924e';
-import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924e';
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260924g';
+import { setLang, t, applyI18n } from './i18n.js?v=20260924g';
+import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260924g';
+import { removeTopEntry, moveTopEntry, moveIntoFolder, mergeTopEntries, dissolveFolder, mergeFolders, sanitizeSites } from './domain/pages.js?v=20260924g';
 
 /* ================= 小工具 ================= */
 const $ = (s, el = document) => el.querySelector(s);

@@ -39,7 +39,7 @@ const GIST_BACKENDS = {
     applyAuth: (url, headers, token) => { if (token) url.searchParams.set('access_token', token); },
     describeError: status => {
       if (status === 401 || status === 403) return '鉴权失败：Token 无效、过期或缺少 gists 权限';
-      if (status === 404) return 'Gist 不存在：请检查 Gist ID（私密 Gist 读取也需要 Token）';
+      if (status === 404) return 'Gist 不存在或 Token 无权访问（可能已删除或 ID 填错）：清空 Gist ID 后点「推送到云端」会自动新建';
       return null;
     },
   },
@@ -52,7 +52,7 @@ const GIST_BACKENDS = {
     describeError: status => {
       if (status === 401) return '鉴权失败：Token 无效或过期';
       if (status === 403) return '权限不足或触发接口限流（Classic Token 需勾选 gist 权限）';
-      if (status === 404) return 'Gist 不存在或 Token 无权访问该 Gist';
+      if (status === 404) return 'Gist 不存在或 Token 无权访问（可能已删除、ID 填错或 Token 重建过）：清空 Gist ID 后点「推送到云端」会自动新建';
       return null;
     },
   },
@@ -91,8 +91,16 @@ export class GistAdapter {
     return res.json();
   }
 
+  /** Gist ID 应为一段十六进制字符；填错（如当成名字填了单词）时快速给出可操作的报错 */
+  #assertGistId() {
+    if (!this.gistId) throw new Error('尚未创建云端 Gist');
+    if (!/^[0-9a-f]{8,64}$/i.test(this.gistId)) {
+      throw new Error('Gist ID「' + this.gistId + '」格式不正确（应为一段十六进制字符，不是名字）。清空 Gist ID 后点「推送到云端」会自动新建');
+    }
+  }
+
   async load() {
-    if (!this.gistId) throw new Error('尚未配置 Gist ID');
+    this.#assertGistId();
     const gist = await this.#request('GET', `/gists/${encodeURIComponent(this.gistId)}`);
     const file = gist.files && gist.files[this.filename];
     if (!file) throw new Error(`Gist 中没有找到文件 ${this.filename}`);
@@ -116,7 +124,7 @@ export class GistAdapter {
   }
 
   async save(data) {
-    if (!this.gistId) throw new Error('尚未创建云端 Gist');
+    this.#assertGistId();
     await this.#request('PATCH', `/gists/${encodeURIComponent(this.gistId)}`, {
       files: { [this.filename]: { content: JSON.stringify(data, null, 2) } },
     });
