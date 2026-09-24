@@ -1093,8 +1093,11 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .sp-pane .set-body label.plain { margin-top: 4px; }
 
 /* ---------- 文件夹（桌面组合 + 浮层） ---------- */
+/* 文件夹卡：单一 100% 轨道让缩略格获得确定宽高——否则 place-items 的 auto 单元格
+   会使 tile 高度退化为内容高度，被成员图标自身的宽高比撑扁/撑长 */
+.folder-card .icon { grid-template-columns: 100%; grid-template-rows: 100%; }
 .folder-tile {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 7%;
+  display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: 7%;
   width: 100%; height: 100%; padding: 9%;
   box-sizing: border-box;
   background: rgba(255, 255, 255, .28);
@@ -1103,6 +1106,7 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
   border-radius: inherit;
 }
 .folder-tile .mini {
+  aspect-ratio: 1 / 1; /* 锁定正方形：高度不随成员图标自身宽高比变形 */
   position: relative; border-radius: 22%; overflow: hidden;
   background: rgba(255, 255, 255, .85);
   display: grid; place-items: center;

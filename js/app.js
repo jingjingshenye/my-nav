@@ -535,7 +535,7 @@ function cardEl(entry, idx = 0) {
 function folderTileHTML(entry) {
   const kids = state.data.sites.filter(x => x.parent === entry.id);
   if (!kids.length) return `<span class="folder-empty">${SVG_FOLDER}</span>`;
-  return `<span class="folder-tile">${kids.slice(0, 4).map(k => `<span class="mini">${dirIconHTML([k.name, k.url])}</span>`).join('')}</span>`;
+  return `<span class="folder-tile">${kids.slice(0, 4).map(k => `<span class="mini">${iconHTML(k)}</span>`).join('')}</span>`;
 }
 
 /** 编辑态"新建文件夹"入口卡 */
