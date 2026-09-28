@@ -8,7 +8,10 @@ import {
   mergeTopEntries,
   dissolveFolder,
   mergeFolders,
+  reorderFolderMember,
   sanitizeSites,
+  rebalancePages,
+  repageAll,
 } from '../js/domain/pages.js';
 
 const mk = (id, extra = {}) => ({ id, name: id, url: `https://${id}.example.com`, icon: '', badge: false, folder: false, parent: '', h: 0, ...extra });
@@ -118,9 +121,47 @@ test('mergeFolders：src 全部成员并入 target，src 移除，target 位置�
   assert.deepEqual(sites.filter(s => !s.parent).map(s => s.id), ['fb']);
 });
 
+test('mergeFolders：页首夹被并走时标记转移给目标夹', () => {
+  const sites = [mk('fa', { folder: true, h: 1 }), mk('a', { parent: 'fa' }), mk('fb', { folder: true })];
+  assert.equal(mergeFolders(sites, 'fa', 'fb'), true);
+  assert.equal(sites.find(x => x.id === 'fb').h, 1); // 标记转到目标
+  assert.equal(sites.find(x => x.id === 'fa'), undefined);
+});
+
+test('dissolveFolder：空夹且为页首时标记转移给后续顶层条目', () => {
+  const sites = [mk('fx', { folder: true, h: 1 }), mk('a'), mk('b')];
+  assert.equal(dissolveFolder(sites, 'fx'), true);
+  assert.deepEqual(sites.map(x => [x.id, x.h]), [['a', 1], ['b', 0]]); // a 接棒页首
+});
+
+test('dissolveFolder：空夹非页首直接删除', () => {
+  const sites = [mk('a'), mk('fx', { folder: true })];
+  assert.equal(dissolveFolder(sites, 'fx'), true);
+  assert.deepEqual(sites.map(x => x.id), ['a']);
+});
+
 test('mergeFolders：文件夹 x 普通图标 拒绝', () => {
   const sites = [mk('fa', { folder: true }), mk('a')];
   assert.equal(mergeFolders(sites, 'fa', 'a'), false);
+});
+
+test('reorderFolderMember：成员在夹内前移/后移，顶层与其他夹不受影响', () => {
+  const sites = [
+    mk('a'), mk('f1', { folder: true }), mk('m1', { parent: 'f1' }), mk('m2', { parent: 'f1' }),
+    mk('m3', { parent: 'f1' }), mk('f2', { folder: true }), mk('n1', { parent: 'f2' }), mk('b'),
+  ];
+  assert.equal(reorderFolderMember(sites, 'f1', 'm1', 2), true); // m1 移到第 2 位（m2 之后）
+  assert.deepEqual(sites.filter(s => s.parent === 'f1').map(s => s.id), ['m2', 'm3', 'm1']);
+  assert.deepEqual(sites.filter(s => !s.parent).map(s => s.id), ['a', 'f1', 'f2', 'b']); // 顶层顺序不动
+  assert.deepEqual(sites.filter(s => s.parent === 'f2').map(s => s.id), ['n1']); // 其他夹不动
+});
+
+test('reorderFolderMember：同位移动不生效 / 越界钳制 / 未知成员拒绝', () => {
+  const sites = [mk('f', { folder: true }), mk('m1', { parent: 'f' }), mk('m2', { parent: 'f' })];
+  assert.equal(reorderFolderMember(sites, 'f', 'm1', 0), false); // 同位
+  assert.equal(reorderFolderMember(sites, 'f', 'm1', 99), true); // 越界钳到末位
+  assert.deepEqual(sites.filter(s => s.parent === 'f').map(s => s.id), ['m2', 'm1']);
+  assert.equal(reorderFolderMember(sites, 'f', 'ghost', 0), false);
 });
 
 test('transferHardBreak：无标记时是空操作', () => {
@@ -147,4 +188,56 @@ test('sanitizeSites：重复 id 只保留首个', () => {
   const out = sanitizeSites([mk('a', { name: 'first' }), mk('a', { name: 'dup' })]);
   assert.equal(out.length, 1);
   assert.equal(out[0].name, 'first');
+});
+
+// ── rebalancePages：inftab finishingSites 对标 ──
+test('rebalancePages：删除不跨页回填（页内空洞保留）', () => {
+  const mk = (n, h) => ({ id: n, parent: '', h });
+  // 3 页（perPage=2）：[a,b] [c,d] [e]
+  const sites = [mk('a'), mk('b'), mk('c', 1), mk('d'), mk('e', 1)];
+  sites.splice(1, 1); // 删 b → 页内空洞
+  rebalancePages(sites, 2);
+  const tops = sites.filter(x => !x.parent);
+  // 页构成：[a] [c,d] [e] —— c 仍是页首（不回填）
+  assert.equal(tops[0].h, 0);
+  assert.equal(tops[1].id, 'c'); assert.equal(tops[1].h, 1);
+  assert.equal(tops[2].id, 'd'); assert.equal(tops[2].h, 0);
+  assert.equal(tops[3].id, 'e'); assert.equal(tops[3].h, 1);
+});
+
+test('rebalancePages：满页溢出级联到下一页头', () => {
+  const mk = (n, h) => ({ id: n, parent: '', h });
+  // 页0 满 [a,b]；页1 [c,d]；插入 x 到页0 → 溢出 b 挤到页1 头
+  const sites = [mk('a'), mk('b'), mk('c', 1), mk('d')];
+  sites.splice(1, 0, { id: 'tx', parent: '', h: 0 }); // a,x,b,c,d
+  rebalancePages(sites, 2);
+  const tops = sites.filter(x => !x.parent);
+  // 页构成：[a,x] [b,c] [d] —— b 被挤到下一页头并接管页首标记
+  assert.equal(tops[2].id, 'b'); assert.equal(tops[2].h, 1);
+  assert.equal(tops[3].id, 'c'); assert.equal(tops[3].h, 0);
+  assert.equal(tops[4].id, 'd'); assert.equal(tops[4].h, 1);
+});
+
+test('rebalancePages：空页删除', () => {
+  const mk = (n, h) => ({ id: n, parent: '', h });
+  // 页1 只有一项 c，被删走 → 空页消失，页2 顶上
+  const sites = [mk('a'), mk('b'), mk('c', 1), mk('d', 1), mk('e')];
+  sites.splice(2, 1); // 删 c
+  rebalancePages(sites, 2);
+  const tops = sites.filter(x => !x.parent);
+  assert.equal(tops.length, 4);
+  assert.equal(tops[2].id, 'd'); assert.equal(tops[2].h, 1); // 页首标记随之上移
+});
+
+// ── repageAll：inftab reSort 对标（布局变更 → 摊平按新容量纯密度重切）──
+test('repageAll：布局变更摊平重切，页构成重置', () => {
+  const mk = (n, h) => ({ id: n, parent: '', h });
+  // 原构成：[a,b] [c,d] [e]（perPage=2，d 所在页有空洞）
+  const sites = [mk('a'), mk('b'), mk('c', 1), mk('d'), mk('e', 1)];
+  repageAll(sites, 3); // 新容量 3：[a,b,c] [d,e]
+  const tops = sites.filter(x => !x.parent);
+  assert.equal(tops[2].id, 'c'); assert.equal(tops[2].h, 0);   // c 不再是页首
+  assert.equal(tops[3].id, 'd'); assert.equal(tops[3].h, 1);   // d 成为新页首
+  assert.equal(tops[4].id, 'e'); assert.equal(tops[4].h, 0);
+  assert.equal(tops.filter(x => x.h).length, 1);               // 仅一处分页
 });

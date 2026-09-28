@@ -54,8 +54,9 @@ body {
 .round-btn svg { width: 19px; height: 19px; }
 
 /* ---------- 菜单 ---------- */
+/* 右键菜单挂 body 下、fixed 定位：层级必须压过文件夹浮层(70)/抽屉(85)等一切浮层 */
 .menu, .ctx-menu {
-  position: absolute; z-index: 60;
+  position: fixed; z-index: 100;
   background: #fff; color: #1f2328;
   border-radius: 12px; padding: 6px;
   min-width: 172px;
@@ -244,7 +245,8 @@ body {
   column-gap: calc(var(--card, 98px) * 0.10 * var(--gap-factor, 1));
   row-gap: calc(var(--card, 98px) * 0.30 * var(--gap-factor, 1));
   justify-content: center;
-  transition: transform .34s cubic-bezier(.25, .75, .3, 1), opacity .28s ease;
+  /* 弹性翻页（对齐 inftab elastic：cubic-bezier(.41,1.5,.5,1.01) 620ms） */
+  transition: transform .56s cubic-bezier(.37, 1.34, .42, 1), opacity .3s ease;
   min-height: 140px;
   will-change: transform;
 }
@@ -265,7 +267,7 @@ body {
   border-radius: calc(var(--icon-radius-pct, 50) * 1%);
   --icon-shadow: 0 4px 16px rgba(0, 0, 0, .20);
   display: grid; place-items: center;
-  transition: transform .15s ease;
+  transition: transform .15s ease, filter .2s ease;
 }
 /* 图片即图标：铺满整个圆形，无白底（对齐 inftab） */
 .card .icon img, .card .icon .ph {
@@ -275,7 +277,14 @@ body {
   box-shadow: var(--icon-shadow);
 }
 .no-icon-shadow .card .icon { --icon-shadow: none; }
-.card:hover .icon { transform: translateY(-3px); }
+/* 悬停反馈（对齐 inftab）：图标呼吸蓝色光晕，不位移 */
+.card:hover .icon { animation: icon-glow 2s ease infinite; }
+@keyframes icon-glow {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(33, 150, 243, .72)); }
+  50% { filter: drop-shadow(0 0 10px rgba(33, 150, 243, .72)); }
+}
+/* 按下反馈（对齐 inftab mousedown）：图标缩小到 0.9 */
+.card:active .icon { transform: scale(.9); }
 .card .icon img { object-fit: cover; position: relative; z-index: 1; grid-area: 1 / 1; }
 .card .icon .ph {
   display: grid; place-items: center;
@@ -298,12 +307,6 @@ body {
 /* 启动动画（图标入场） */
 .icon-intro .card { animation: card-in .4s ease backwards; animation-delay: calc(var(--i, 0) * 35ms); }
 @keyframes card-in { from { opacity: 0; transform: scale(.82); } }
-.card.add-card .icon {
-  background: rgba(255,255,255,.28); backdrop-filter: blur(4px);
-  color: #fff;
-}
-.card.add-card .icon svg { width: 26px; height: 26px; }
-.card.add-card .label { color: rgba(255,255,255,.92); }
 .grid-page .empty-tip {
   grid-column: 1 / -1;
   text-align: center; color: rgba(255,255,255,.9);
@@ -312,39 +315,91 @@ body {
 }
 .grid-pages.hide-labels .label { display: none; }
 .card.drop-target .icon { outline: 2px dashed #fff; outline-offset: 3px; }
-/* 拖动落点插入条：拖动期间其它图标静止，落点位置用它表达 */
-.drag-insert {
-  position: absolute; z-index: 6; width: 5px; border-radius: 3px;
-  background: rgba(255, 255, 255, .92); box-shadow: 0 0 8px rgba(255, 255, 255, .55);
-  pointer-events: none; display: none;
-}
-.drag-insert.show { display: block; }
-/* 拖动中：源图标半透明驻留原位 */
-.grid-page .card.sortable-chosen { opacity: .35; }
 
-/* 拖拽合并提示气泡（重叠度 ≥70% 时出现在目标下方） */
-.merge-hint {
-  position: fixed; z-index: 65; transform: translateX(-50%);
-  background: rgba(0, 0, 0, .74); color: #fff; font-size: 12px;
-  padding: 4px 10px; border-radius: 999px; white-space: nowrap;
-  pointer-events: none; opacity: 0; transition: opacity .15s ease;
+/* 悬停停顿升级反馈（对齐 iOS/inftab hover-item）：拖影压住即放大 + 蓝光预示；
+   长停后白圈放大 = 合并/移入（inftab merge 阶段 shake-item 的对应物）。
+   拖拽常驻可用，不限编辑态 */
+.card.hover-armed .icon, .fv-item.hover-armed .icon {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 5px rgba(33, 150, 243, .72));
 }
-.merge-hint.show { opacity: 1; }
-
-/* 手机桌面式：拖到普通图标上 = 合成文件夹（目标放大 + 白圈提示，松手生效） */
-.editing .card.merge-target .icon {
+.card.merge-target .icon, .fv-item.merge-target .icon {
   transform: scale(1.12);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, .9), 0 8px 22px rgba(0, 0, 0, .28);
+  filter: drop-shadow(0 0 8px rgba(33, 150, 243, .72));
 }
-.editing .card .icon { animation: wiggle .32s ease-in-out infinite; }
-.editing .card:nth-child(2n) .icon { animation-direction: reverse; animation-delay: -.16s; }
-.editing .card:nth-child(3n) .icon { animation-delay: -.08s; }
+/* 合并落库抖动（对齐 inftab shake-item）：建夹/移入/夹并夹生效后，新文件夹卡轻抖两下 */
+@keyframes merge-shake {
+  0%, 100% { transform: scale(1.1) rotate(0deg); }
+  25% { transform: scale(1.1) rotate(-5deg); }
+  75% { transform: scale(1.1) rotate(5deg); }
+}
+.card.merge-born .icon { animation: merge-shake .32s ease-in-out 2; }
+/* 图标右键菜单压过一切浮层（含拖拽 ghost） */
+.ctx-menu { z-index: 1000; }
+/* 自研指针拖拽（grid-manager）：ghost 跟手元素；源卡整卡隐藏（洞随拖影） */
+.grid-drag-ghost {
+  position: fixed; left: 0; top: 0; z-index: 999;
+  pointer-events: none; will-change: transform;
+  transform-origin: center;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .38));
+}
+/* ghost 脱离 .card 后失去 .card .icon 的网格布局：必须自带，否则
+   字母占位 (.ph) 会以内联文本形式和图片并排冒出来（拖动时左上角飘文字的根因） */
+.grid-drag-ghost {
+  display: grid; place-items: center;
+  border-radius: calc(var(--icon-radius-pct, 50) * 1%); /* 兜底：正常路径由 makeGhost 内联计算值 */
+}
+.grid-drag-ghost img, .grid-drag-ghost .ph { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; grid-area: 1 / 1; }
+.grid-drag-ghost img { position: relative; z-index: 1; }
+.grid-drag-ghost .ph { display: grid; place-items: center; }
+body.grid-dragging { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+/* 拖拽期间被拖图标 = 隐形占格（inftab merge-holder：opacity:0，占据布局不显示）。
+   排序真相在数据层（拖动中已按停顿落库重渲），让位动画由 renderGrid 的 id-FLIP 呈现 */
+/* 隐形占格对被拖项在任何容器生效（inftab merge-holder 架构）：桌面卡与面板成员一视同仁——
+   合并落库后面板打开时，手里的图标在面板里是洞，不是「已落位」 */
+.card.drag-source, .fv-item.drag-source { opacity: 0; }
+.card.drag-source .icon, .fv-item.drag-source .icon { background: none; border: none; }
+.card, .fv-item { position: relative; }
+/* 拖拽期间扩展卡片命中域到缝隙一半（inftab 的格间距属于图标盒内部、无 fall-through；
+   我们卡片间有真实缝隙，不补会让缝隙落空掉进页尾 end 区——“想插入中间却飞到末尾”的根源）。
+   平时不启用，避免误点缝隙打开网站 */
+body.grid-dragging .card::after {
+  content: ''; position: absolute;
+  inset: -10px -6px; /* 覆盖行/列缝隙的一半，相邻卡各占其半（桌面：缝隙=插入位） */
+}
+/* 边缘翻页感应区（inftab 原版：白底 opacity 0，窥视循环时淡入 .05→.3→.05），
+   宽度 min(10vw,130px) 且钳制在网格余量内 */
+.drag-aside { position: fixed; top: 0; bottom: 0; width: 130px; max-width: 10vw; z-index: 990; pointer-events: auto; background: #fff; opacity: 0; }
+.drag-aside.left { left: 0; }
+.drag-aside.right { right: 0; }
+/* 删除动画：inftab delAmimation 由 WAAPI 驱动（scale .1 + 淡出），无 CSS 需要 */
+/* 触屏：按住卡片即进入拖拽，不让页面滚动接管；长按不呼出系统图片菜单/链接拖动 */
+.card, .fv-item { touch-action: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+.card img, .fv-item img { -webkit-touch-callout: none; pointer-events: none; }
+
+/* 编辑态抖动（对齐 inftab）：普通图标 ±2° 轻微旋转晃动（0.3s 循环、0.3s 延迟），
+   文件夹不抖（inftab :not(.folder) 语义） */
+.editing .card:not(.folder-card) .icon { animation: iconSpin .3s ease .3s infinite; }
+@keyframes iconSpin {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(-2deg); }
+  60% { transform: rotate(0deg); }
+  80% { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
+}
+/* 编辑态按下（对齐 inftab spinscale 0.2s）：停止晃动并缩小，示意「已抓住」 */
+.editing .card:active .icon { animation: none; transform: scale(.9); }
 @keyframes wiggle {
   0%, 100% { transform: rotate(-2.4deg) translate(-.5px, 0); }
   50% { transform: rotate(2.4deg) translate(.5px, 0); }
 }
+/* ×/铅笔按钮常驻 DOM，仅编辑态显示（卡片跨模式复用，不随模式重建） */
+.card .del, .card .edit-go, .fv-item .del, .fv-item .edit-go { display: none; }
+.editing .card .del, .editing .fv-item .del { display: grid; place-items: center; }
+
 /* 编辑态中央按钮（对齐 inftab：铅笔 = 编辑；悬停卡片时才浮现，半透明底不遮挡图标） */
-.editing .card .edit-go {
+.editing .card .edit-go, .editing .fv-item .edit-go {
   display: grid; place-items: center;
   position: absolute; inset: 0; margin: auto;
   width: 44%; height: 44%;
@@ -356,9 +411,9 @@ body {
   opacity: 0; pointer-events: none;
   transition: opacity .15s ease, transform .15s ease;
 }
-.editing .card:hover .edit-go { opacity: 1; pointer-events: auto; }
-.editing .card .edit-go svg { width: 56%; height: 56%; }
-.editing .card .edit-go:hover { background: rgba(0, 0, 0, .55); transform: scale(1.08); }
+.editing .card:hover .edit-go, .editing .fv-item:hover .edit-go { opacity: 1; pointer-events: auto; }
+.editing .card .edit-go svg, .editing .fv-item .edit-go svg { width: 56%; height: 56%; }
+.editing .card .edit-go:hover, .editing .fv-item .edit-go:hover { background: rgba(0, 0, 0, .55); transform: scale(1.08); }
 .card .del {
   display: none;
   position: absolute; top: -7px; right: -7px; z-index: 3;
@@ -937,7 +992,7 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
   font-size: 14px; color: #333; outline: none;
 }
 .edit-field input:focus { border-bottom-color: var(--acc, #4a90d9); }
-.icon-pick { display: flex; gap: 16px; margin-top: 12px; }
+.icon-pick { display: flex; flex-wrap: wrap; gap: 12px 14px; margin-top: 12px; }
 .pick {
   position: relative; width: 72px; padding: 0;
   border: none; background: none; cursor: pointer; text-align: center;
@@ -1096,13 +1151,12 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 /* 文件夹卡：单一 100% 轨道让缩略格获得确定宽高——否则 place-items 的 auto 单元格
    会使 tile 高度退化为内容高度，被成员图标自身的宽高比撑扁/撑长 */
 .folder-card .icon { grid-template-columns: 100%; grid-template-rows: 100%; }
+/* inftab：文件夹缩略 = 3x3 九宫格（前 9 成员），灰底 hsla(0,0%,78.4%,.75) */
 .folder-tile {
-  display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: 7%;
-  width: 100%; height: 100%; padding: 9%;
+  display: grid; grid-template-columns: repeat(3, 1fr); align-content: center; gap: 5%;
+  width: 100%; height: 100%; padding: 10%;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, .28);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: hsla(0, 0%, 78.4%, .75);
   border-radius: inherit;
 }
 .folder-tile .mini {
@@ -1115,16 +1169,13 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 .folder-tile .mini img, .folder-tile .mini .ph { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
 .folder-empty { width: 100%; height: 100%; display: grid; place-items: center; color: #fff; background: rgba(255,255,255,.28); border-radius: inherit; }
 .folder-empty svg { width: 46%; height: 46%; }
-.folder-count {
-  position: absolute; top: -7px; right: -9px;
-  min-width: 19px; height: 19px; padding: 0 5px;
-  border-radius: 10px; background: #ff4d4f;
-  border: 2px solid rgba(255, 255, 255, .95);
-  color: #fff; font-size: 11px; font-weight: 700; font-style: normal;
-  display: grid; place-items: center;
-}
 
-.folder-mask { position: fixed; inset: 0; z-index: 69; background: rgba(15, 18, 22, .45); }
+.folder-mask {
+  position: fixed; inset: 0; z-index: 69; background: rgba(15, 18, 22, .45);
+  animation: mask-in .2s ease; transition: opacity .15s ease;
+}
+.folder-mask.closing { opacity: 0; }
+@keyframes mask-in { from { opacity: 0; } }
 .folder-view {
   position: fixed; z-index: 70; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: min(560px, 92vw); max-height: min(560px, 80vh);
@@ -1132,9 +1183,25 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   border-radius: 22px; box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
   padding: 18px 20px 20px;
-  animation: folder-pop .18s ease;
+  /* transform-origin 由 openFolder 按来源卡片位置设置：对齐 iOS 从图标位置 zoom 展开 */
+  transform-origin: center;
+  animation: folder-zoom .24s cubic-bezier(.2, .85, .3, 1.15);
 }
-@keyframes folder-pop { from { transform: translate(-50%, -50%) scale(.86); opacity: 0; } }
+.folder-view.closing { animation: folder-zoom-out .15s ease forwards; pointer-events: none; }
+@keyframes folder-zoom { from { transform: translate(-50%, -50%) scale(.25); opacity: 0; } }
+@keyframes folder-zoom-out { to { transform: translate(-50%, -50%) scale(.25); opacity: 0; } }
+
+/* 编辑模式（对齐 iOS 抖动模式）右上角「完成」浮条 */
+.edit-done-bar {
+  position: fixed; top: 18px; right: 22px; z-index: 80;
+  border: none; border-radius: 999px; padding: 8px 24px;
+  background: rgba(255, 255, 255, .92); color: #111;
+  font-size: 13.5px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: transform .15s ease, background .15s ease;
+}
+.edit-done-bar:hover { transform: translateY(-1px); background: #fff; }
 .fv-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .fv-hint { flex: 1; text-align: center; font-size: 11.5px; color: var(--tx-2, #98a0a8); margin: 0 8px; }
 .fv-rename {
@@ -1176,8 +1243,6 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
   box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
 }
 .fv-item .del svg { width: 100%; height: 100%; }
-.fv-item.fv-add .icon { display: grid; place-items: center; background: rgba(255, 255, 255, .5); color: #555; }
-.fv-item.fv-add .icon svg { width: 26px; height: 26px; }
 
 /* 新建页圆点（编辑态拖入即新增一页） */
 .dot.dot-new {
@@ -1193,3 +1258,25 @@ dialog::backdrop { background: rgba(20, 24, 28, .35); -webkit-backdrop-filter: n
 @media (max-width: 720px) {
   .edit-close { left: auto; right: 16px; }
 }
+
+/* inftab：文件夹名常驻输入框——样式即标题文本，无边框透明底 */
+.fv-name {
+  background: transparent; border: none; outline: none;
+  color: inherit; font: inherit; text-align: center;
+  width: 220px; max-width: 60vw; padding: 0;
+}
+.fv-name:focus { border-bottom: 2px solid rgba(255,255,255,.65); }
+
+/* 自绘确认弹窗（inftab IConfirm：窄卡片、标题+文案+按钮） */
+#dlgConfirm { width: min(340px, 90vw); }
+#dlgConfirm .dlg-body p { margin: 0; color: #4a5262; line-height: 1.6; }
+
+/* 小图标锐化（SVG 卷积滤镜，JS 对 <64px 的图标添加）：放大显示时的边缘增强 */
+.icon-sharp, .icon-sharp img { filter: url(#icon-sharpen); }
+
+/* 小图标配色板（iOS 徽章式）：全网只有小图的站点，icon 缩到 62% 居中于确定性哑色底，
+   圆角跟随图标设置；字母头像兜底时不叠加（advanceIcon 撤除） */
+/* 注意：不可加 overflow:hidden——色板背景由 .icon 的 border-radius 自行裁剪（62% 小图不会溢出），
+   而 × 删除按钮是外挑定位（top:-6px）在图标边缘外，overflow 会把它剪掉（编辑态按钮消失的根因） */
+.card .icon.icon-tile img, .card .icon.icon-tile .ph,
+.fv-item .icon.icon-tile img, .fv-item .icon.icon-tile .ph { width: 62%; height: 62%; }

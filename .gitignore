@@ -14,3 +14,6 @@ Thumbs.db
 __pycache__/
 node_modules/
 .patch_*.py
+
+# inftab 逆向分析产物（受版权保护的原站代码美化版，不入库；分析结论在 docs/ 与代码注释中）
+inftab-reversed/

@@ -82,6 +82,12 @@ export function dissolveFolder(sites, folderId) {
   const rest = sites.filter(x => x.id !== folderId && !memberSet.has(x));
   members.forEach(m => { m.parent = ''; m.h = 0; });
   if (folder.h && members.length) members[0].h = 1;
+  if (folder.h && !members.length && rest.length) {
+    // 空夹且是页首：硬分页标记转移给其后的第一个顶层条目，页面构成不乱
+    for (let j = i; j < rest.length; j++) {
+      if (!rest[j].parent) { rest[j].h = 1; break; }
+    }
+  }
   rest.splice(i, 0, ...members);
   sites.length = 0;
   sites.push(...rest);
@@ -93,9 +99,78 @@ export function mergeFolders(sites, srcId, targetId) {
   const src = sites.find(x => x.id === srcId);
   const target = sites.find(x => x.id === targetId);
   if (!src || !target || src === target || !src.folder || !target.folder) return false;
+  if (src.h && !target.h) { target.h = 1; src.h = 0; } // 页首夹被并走：标记转给目标，页面构成不乱
   sites.forEach(x => { if (x.parent === srcId) x.parent = targetId; });
   sites.splice(sites.indexOf(src), 1);
   return true;
+}
+
+/** 文件夹内成员重排：member 移动为该夹第 targetIdx 个成员（0 起，越界钳制）。
+ *  通过在 sites 数组中移动成员元素实现，不影响顶层顺序与其他夹。返回是否生效 */
+export function reorderFolderMember(sites, folderId, memberId, targetIdx) {
+  const members = sites.filter(x => x.parent === folderId);
+  const from = members.findIndex(m => m.id === memberId);
+  if (from < 0) return false;
+  const to = Math.max(0, Math.min(members.length - 1, targetIdx));
+  if (from === to) return false;
+  const member = members[from];
+  sites.splice(sites.indexOf(member), 1);
+  const remaining = sites.filter(x => x.parent === folderId);
+  const anchor = remaining[Math.min(to, remaining.length - 1)];
+  if (!anchor) sites.push(member);
+  else {
+    // 后移插锚点之后、前移插锚点之前：两者都恰好落在删除后序列的第 to 位
+    const at = sites.indexOf(anchor);
+    sites.splice(from < to ? at + 1 : at, 0, member);
+  }
+  return true;
+}
+
+/** inftab reSort 的扁平等价：布局（行列）变更时——所有页摊平、按新容量纯密度重切，
+ *  页构成重置（与日常变更的 finishingSites「页保持」语义不同，原版两套并行） */
+export function repageAll(sites, perPage) {
+  sites.forEach(x => { x.h = 0; });
+  return rebalancePages(sites, perPage);
+}
+
+/** inftab finishingSites 的扁平等价：以现有 h 分组为「页构成」，按每页容量重平衡——
+ *  · 溢出级联：超过容量的页把尾部挤到下一页头（下一页可能因此再溢出，递归处理），
+ *    下一页不足时直接吸收（跨页填充，但对齐 inftab：仅溢出才跨页，删除不回填）；
+ *  · 空页删除；
+ *  · 完成后给每页首项（首页除外）打 h 标记持久化页构成，其余清零。
+ *  级联只在连续扁平序列内移动边界，顶层相对顺序不变。返回 h 是否发生变化 */
+export function rebalancePages(sites, perPage) {
+  perPage = Math.max(1, perPage | 0);
+  const tops = sites.filter(x => !x.parent);
+  if (!tops.length) {
+    let changed = false;
+    sites.forEach(x => { if (x.h) { x.h = 0; changed = true; } });
+    return changed;
+  }
+  // 页构成：h 分组，每组一页（组内瞬时超容由级联处理）
+  const pages = [];
+  let cur = [];
+  tops.forEach(en => {
+    if (en.h && cur.length) { pages.push(cur); cur = []; }
+    cur.push(en);
+  });
+  if (cur.length) pages.push(cur);
+  // 溢出级联（inftab finishingSites 逐页递归）
+  for (let i = 0; i < pages.length; i++) {
+    if (pages[i].length > perPage) {
+      const excess = pages[i].splice(perPage);
+      if (i + 1 < pages.length) pages[i + 1] = excess.concat(pages[i + 1]);
+      else pages.splice(i + 1, 0, excess);
+    }
+  }
+  for (let i = pages.length - 1; i >= 0; i--) if (!pages[i].length) pages.splice(i, 1);
+  // h 重打：每页首项（首页除外）
+  let changed = false;
+  pages.forEach((p, pi) => p.forEach((en, ii) => {
+    const h = ii === 0 && pi > 0 ? 1 : 0;
+    if (en.h !== h) { en.h = h; changed = true; }
+  }));
+  return changed;
 }
 
 /** 结构不变量校验/修复：装载、拉取、导入后统一过一遍。

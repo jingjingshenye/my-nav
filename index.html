@@ -6,7 +6,7 @@
   <meta name="description" content="观澜 · 观水有术，必观其澜——极简新标签页导航，数据云端同步，随处可用">
   <title>观澜 · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260924j">
+  <link rel="stylesheet" href="css/style.css?v=20260930d">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -74,8 +74,8 @@
     </div>
   </aside>
 
-  <!-- 壁纸右键菜单（对齐 inftab） -->
-  <div class="ctx-menu" id="wallMenu" hidden></div>
+  <!-- 编辑模式（对齐 iOS 抖动模式）：右上角「完成」浮条。进入方式：右键任意图标 -->
+  <button type="button" class="edit-done-bar" id="editDoneBar" hidden>完成</button>
 
   <!-- 搜索图标浮层（Ctrl + F） -->
   <div class="iconfind-mask" id="iconFind" hidden>
@@ -172,7 +172,6 @@
             <button type="button" class="btn" id="actImport">导入</button>
             <button type="button" class="btn" id="actExport">导出</button>
             <button type="button" class="btn" id="actLoad">内置数据</button>
-            <button type="button" class="btn" id="actEdit">编辑模式</button>
           </div>
           <ul class="backup-list" id="backupList"></ul>
         </div>
@@ -288,6 +287,7 @@
               <option value="en">English</option>
             </select>
           </div>
+          <button type="button" class="btn" id="btnAbout">关于观澜</button>
         </div>
       </section>
       <section class="set-card">
@@ -374,6 +374,19 @@
 
 
 
+  <!-- 自绘确认弹窗（inftab IConfirm 对齐：标题 + 文案 + 取消/确认） -->
+  <dialog id="dlgConfirm">
+    <div class="dlg-head">
+      <h3 id="cfTitle">确认</h3>
+      <button class="dlg-close" data-close title="关闭">&times;</button>
+    </div>
+    <div class="dlg-body"><p id="cfText"></p></div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-close id="cfCancel">取消</button>
+      <button type="button" class="btn danger-btn" id="cfOk">确定</button>
+    </div>
+  </dialog>
+
   <!-- 关于 -->
   <dialog id="dlgAbout">
     <div class="dlg-head">
@@ -384,16 +397,26 @@
       <img src="assets/logo.svg" width="48" height="48" alt="logo">
       <p><b>观澜</b> · 取自《孟子》「观水有术，必观其澜」——万川归海，由此观澜的极简起始页。</p>
       <p>数据可保存在本机，也可通过 Gitee Gist 云端同步，走到哪用到哪。</p>
-      <p class="hint">快捷键：/ 或 Ctrl+K 聚焦搜索 · Ctrl+F 搜索图标 · ←/→ 翻页 · 滚轮翻页 · 右键图标进入编辑</p>
+      <p class="hint">快捷键：/ 或 Ctrl+K 聚焦搜索 · Ctrl+F 搜索图标 · ←/→ 翻页 · 滚轮翻页 · 右键图标编辑 · E 整理图标</p>
       <p class="hint">在线：<a href="https://jingjingshenye.github.io/my-nav/" target="_blank" rel="noopener">jingjingshenye.github.io/my-nav</a></p>
       <p class="hint">开源：<a href="https://github.com/jingjingshenye/my-nav" target="_blank" rel="noopener">github.com/jingjingshenye/my-nav</a> · <a href="https://gitee.com/jingjingshenye/nav-page" target="_blank" rel="noopener">gitee.com/jingjingshenye/nav-page</a></p>
     </div>
   </dialog>
 
+  <!-- 小图标锐化滤镜（合成层卷积，无 CORS 限制）：小图放大显示时由 JS 加 .icon-sharp 启用 -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <!-- USM 反锐化掩模（sRGB）：对放大后的小图边缘做可感知增强；裸 3x3 拉普拉斯实测弱到不可见 -->
+    <filter id="icon-sharpen" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="0.8" result="b" />
+      <feComposite in="SourceGraphic" in2="b" operator="arithmetic" k1="0" k2="3.4" k3="-2.4" k4="0" />
+    </filter>
+  </svg>
+
   <div class="toasts" id="toasts"></div>
+  <!-- 文件夹右键菜单（打开全部 / 重命名 / 解散） -->
+  <nav class="ctx-menu" id="ctxMenu" hidden></nav>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script src="js/vendor/sortable.min.js"></script>
-  <script type="module" src="js/app.js?v=20260924j"></script>
+  <script type="module" src="js/app.js?v=20260930d"></script>
 </body>
 </html>

@@ -258,6 +258,7 @@ export function seedSites() {
 export function buildData(payload = {}, keepSync) {
   return {
     version: 1,
+    updatedAt: payload.updatedAt || 0, // 数据时间戳：云同步「拉取覆盖保护」用
     sites: sanitizeSites((payload.sites || []).map(normalizeSite)),
     settings: { ...normalizeSettings(payload.settings || {}), sync: keepSync || normalizeSettings().sync },
   };
