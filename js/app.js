@@ -1,103 +1,13 @@
-import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260930g';
-import { setLang, t, applyI18n } from './i18n.js?v=20260930g';
-import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260930g';
-import { removeTopEntry, moveTopEntry, transferHardBreak, moveIntoFolder, mergeTopEntries, dissolveFolder, reorderFolderMember, sanitizeSites, rebalancePages, repageAll } from './domain/pages.js?v=20260930g';
-import { createGridManager } from './grid-manager.js?v=20260930g';
-import { idb, idbPut, idbGet } from './idb.js?v=20260930g';
-import { SITE_DIRECTORY } from './data/directory.js?v=20260930g';
-
-/* ================= 小工具 ================= */
-const $ = (s, el = document) => el.querySelector(s);
-const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SVG_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-const SVG_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
-const SVG_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5a2 2 0 012-2h4l2 2.5h7a2 2 0 012 2v8.5a2 2 0 01-2 2h-13a2 2 0 01-2-2z"/></svg>';
-const SVG_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
-
-/** 小图标配色：精选中饱和哑色系（深浅壁纸皆宜、不与白图标/白字冲突），
- *  按站点 host 确定性取色——同站永远同色（避免每次渲染变色） */
-const TILE_PALETTE = ['#5b8def', '#4fb286', '#e8a87c', '#9b8ce0', '#5fb0c9', '#c98bb9', '#8d9db6', '#d98d8d', '#7fb069', '#e0b589'];
-function tileColor(key) {
-  let h = 0;
-  for (const ch of String(key || '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-  return TILE_PALETTE[h % TILE_PALETTE.length];
-}
-
-function tint(name) {
-  const palette = ['#f2708a', '#5aa9e6', '#7fc8a9', '#e6a157', '#9b8ce0', '#59c3c3'];
-  let h = 0;
-  for (const ch of String(name)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-  return palette[h % palette.length];
-}
-
-/* ================= 内置壁纸 ================= */
-const WALLPAPERS = [
-  { id: 'preset:forest', name: '雾林', css: "url('assets/wallpaper.svg')" },
-  { id: 'preset:aurora', name: '极光', css: 'linear-gradient(135deg,#0f2027,#203a43,#2c5364)' },
-  { id: 'preset:dusk',   name: '暮色', css: 'linear-gradient(135deg,#355c7d,#6c5b7b,#c06c84)' },
-  { id: 'preset:mint',   name: '薄荷', css: 'linear-gradient(135deg,#134e5e,#71b280)' },
-  { id: 'preset:night',  name: '暗夜', css: 'linear-gradient(135deg,#232526,#414345)' },
-];
-
-/* ================= 状态 ================= */
-const state = {
-  data: null,      // { version, sites, settings }
-  page: 0,
-  pages: 1,
-  editMode: false,
-  editingId: null, // 当前正在编辑的条目 id（null = 添加）
-  editingFolder: false, // 编辑面板当前操作的是文件夹
-  editingParent: '', // 新建网址的目标文件夹 id（空 = 桌面）
-  openFolderId: null, // 当前打开的文件夹 id
-  dragId: null, // 拖拽中的条目 id
-  edgePageCreated: false, // 本次拖拽是否已通过末页边缘新建过页（一次拖拽最多新建一页）
-  extraPages: 0, // 编辑态手动新增的空页数（退出编辑自动回收）
-  layout: { cols: 6, rows: 3, card: 98 },
-};
-
-/** 图标网格拖拽引擎（通用模块，桌面/文件夹两网格共用；规格见 docs/icon-grid-prd.md） */
-const gridMgr = createGridManager();
-let desktopGrid = null, folderGrid = null;
-
-/** 依据屏幕尺寸计算网格布局：自动模式铺满可用宽高，自定义模式按设置的行列数并尽量放大图标 */
-function computeLayout() {
-  const s = state.data.settings.layout;
-  const vw = innerWidth, vh = innerHeight;
-  // 图标缩放系数（50%–120%，基准 71%）驱动卡片尺寸：图标始终占卡片 66%，不再溢出格子
-  const f = Math.max(0.5, Math.min(1.7, (state.data.settings.iconScale || 71) / 71));
-
-  let colsBase, rowsCap;
-  if (s.mode === 'fixed') {
-    colsBase = Math.max(1, s.col);
-    rowsCap = Math.max(1, s.row);
-  } else {
-    colsBase = Math.max(4, Math.min(12, Math.floor(Math.min(vw * 0.94, 1760) / 148)));
-    rowsCap = 6;
-  }
-
-  // 基准卡宽沿用原逻辑，再乘缩放系数——容器宽度随之可调
-  let card = Math.max(88, Math.min(128, Math.floor(Math.min(vw * 0.94, 1720) / Math.max(3, colsBase)) - 8));
-  card = Math.max(64, Math.round(card * f));
-
-  // 硬上限：卡宽不超过可用宽度的 1/3；卡片连文字不超过可用高度的 1/2——网格最高不超整屏
-  const areaTop = $('#gridArea').getBoundingClientRect().top;
-  const availH = Math.max(220, vh - areaTop - 96); // 预留翻页圆点与页脚
-  card = Math.min(card, Math.floor(vw * 0.94 / 3), Math.floor(availH / 2));
-
-  // 列数/行数：优先尊重设置值，但以实际能放进屏幕为准；间距设置计入纵横步距
-  const g = Math.max(0, Math.min(2, (s.gap ?? 100) / 100));
-  const colPitch = card * (1 + 0.10 * g);
-  const colsFit = Math.max(2, Math.floor((vw * 0.94) / colPitch));
-  const cols = Math.max(2, Math.min(colsBase, colsFit));
-  const rowPitch = card * (1.42 + 0.30 * (g - 1));
-  const rowsFit = Math.max(1, Math.floor((availH - 16) / rowPitch));
-  const rows = Math.max(1, Math.min(rowsCap, rowsFit));
-  state.layout = { cols, rows, card };
-}
-
-const perPage = () => state.layout.cols * state.layout.rows;
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260930h';
+import { setLang, t, applyI18n } from './i18n.js?v=20260930h';
+import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260930h';
+import { removeTopEntry, moveTopEntry, transferHardBreak, moveIntoFolder, mergeTopEntries, dissolveFolder, reorderFolderMember, sanitizeSites, rebalancePages, repageAll } from './domain/pages.js?v=20260930h';
+import { $, $$, debounce, escapeHtml, SVG_PLUS, SVG_X, SVG_FOLDER, SVG_PENCIL, tileColor, tint, WALLPAPERS, state, gridMgr, computeLayout, perPage, setGrids } from './common.js?v=20260930h';
+import { uiConfirm, toast } from './views/dialog.js?v=20260930h';
+import { sourceChainFor, iconSources, iconHTML, hydrateIdbIcons, hydrateIconCache, armImgTimeout, advanceIcon, imgTimers, deadIconHosts } from './views/icons.js?v=20260930h';
+import { activeType, resolveEngine, buildSearchUrl, renderTypeTabs, updateSearchUI, toggleEngineMenu, renderEngineMenu, engineGlyphHTML, doSearch, hideSug, renderSug, fetchSug, jsonp, LOOKS_LIKE_URL, sugList, sugIndex } from './views/search.js?v=20260930h';
+import { idb, idbPut, idbGet } from './idb.js?v=20260930h';
+import { SITE_DIRECTORY } from './data/directory.js?v=20260930h';
 
 /* ================= 持久化与同步 ================= */
 const local = new LocalAdapter();
@@ -392,155 +302,6 @@ async function maybeAutoBingDaily() {
   applyWallpaper();
   toast(t('已自动更换今日必应壁纸'));
 }
-
-/** 统一多源图标回退链：依次尝试直到拿到可用图标；全部失败则显示字母头像。
- *  清晰度优先（inftab 自建高清 CDN 的等价替代）：apple-touch(通常180px) → 高清聚合 → 品牌源；favicon.ico 沉底（常仅16/32px，放大必糊） */
-function sourceChainFor(url, size = 128) {
-  let host;
-  try { host = new URL(url).host; } catch { return []; }
-  const bare = host.replace(/^www\./, '');
-  const list = [
-    // 站点自有高清路径（404 快速失败，不拖链）：PWA 512 / 矢量 SVG（无限清晰）
-    `https://${host}/apple-touch-icon.png`,
-    `https://${host}/apple-touch-icon-precomposed.png`,
-    `https://${host}/android-chrome-512x512.png`,
-    `https://${host}/icon-512.png`,
-    `https://${host}/favicon.svg`,
-    // 聚合服务（favicon.im 服务端已做 link→manifest→touch→ico 瀑布）：
-    // throw-error-on-404 必挂——否则 404 时它返回 200 占位图，回退链会误判成功而卡死
-    `https://favicon.im/${host}?larger=true&throw-error-on-404=true`,
-    `https://unavatar.io/${host}?fallback=false`,
-    `https://icons.duckduckgo.com/ip3/${bare}.ico`,
-    `https://api.faviconkit.com/${bare}/144`,
-    `https://logo.clearbit.com/${host}`,
-    `https://www.google.com/s2/favicons?domain=${bare}&sz=128`,
-    `https://${host}/favicon.ico`,
-    `https://favicon.im/${bare}?larger=true&throw-error-on-404=true`,
-  ];
-  return [...new Set(list)].filter(u => {
-    try { return !deadIconHosts.has(new URL(u).host); } catch { return true; }
-  });
-}
-
-function iconSources(site) {
-  return sourceChainFor(site.url);
-}
-
-function iconHTML(site) {
-  // 字母头像垫底，真实图标加载成功后盖在上面；全部源失败时移除 img 只留头像
-  const ph = `<span class="ph" style="background:${tint(site.name)}">${escapeHtml((site.name || '•')[0])}</span>`;
-  if (site.avatar) return ph; // 用户明确选择「纯色图标」
-  if (site.icon && site.icon.startsWith('idb:')) {
-    // 本地上传图标：src 由 hydrateIdbIcons 从 IndexedDB 异步填充
-    return `${ph}<img data-idbkey="${escapeHtml(site.icon.slice(4))}" alt="" draggable="false">`;
-  }
-  if (site.icon) return `${ph}<img src="${escapeHtml(site.icon)}" alt="" loading="lazy" draggable="false">`;
-  const sources = iconSources(site);
-  if (!sources.length) return ph;
-  let host = '';
-  try { host = new URL(site.url).host; } catch { return ph; }
-  return `${ph}<img src="${escapeHtml(sources[0])}" referrerpolicy="no-referrer" data-sources="${escapeHtml(sources.join('|'))}" data-icache="${escapeHtml(host)}" alt="" loading="lazy" draggable="false">`;
-}
-
-// 本地图标 blob -> objectURL 缓存
-const idbIconUrls = new Map();
-async function hydrateIdbIcons(root) {
-  // 仅处理「新建且未填充」的 img（复用节点 src 已就绪，跳过——渲染高频路径减负）
-  for (const img of root.querySelectorAll('img[data-idbkey]')) {
-    const key = img.dataset.idbkey;
-    if (img.src.startsWith('blob:')) continue; // 复用节点：已填充
-    try {
-      if (!idbIconUrls.has(key)) {
-        const blob = await idbGet(key);
-        if (!blob) { img.remove(); continue; }
-        idbIconUrls.set(key, URL.createObjectURL(blob));
-      }
-      img.src = idbIconUrls.get(key);
-    } catch { img.remove(); }
-  }
-}
-
-/** 图标缓存：图标首次加载成功后记入 IndexedDB，此后优先直出。
- *  图片本体可跨域读取时存 Blob（本地直出、离线可用）；否则退化为「记住可用源地址」，
- *  下次直接从上次成功的图源开始，跳过前面超时/失效的源 */
-const iconCacheUrls = new Map();
-const iconCacheDone = new Set();
-
-function hydrateIconCache(root) {
-  root.querySelectorAll('img[data-icache]').forEach(img => {
-    const host = img.dataset.icache;
-    const hit = iconCacheUrls.get(host);
-    if (hit) { img.removeAttribute('data-sources'); img.src = hit; return; }
-    if (img.dataset.sources) armImgTimeout(img);
-    idbGet('icache:' + host).then(rec => {
-      if (!rec || !img.isConnected) return;
-      if (rec instanceof Blob) {
-        const url = URL.createObjectURL(rec);
-        iconCacheUrls.set(host, url);
-        img.removeAttribute('data-sources');
-        img.src = url;
-      } else if (rec.u) {
-        // 记住的可用源：增强版（data:）直接使用；普通 URL 从它开始并保留回退链
-        if (rec.u.startsWith('data:')) { img.removeAttribute('data-sources'); img.src = rec.u; iconCacheDone.add(host); }
-        else if (img.dataset.sources.split('|').includes(rec.u)) { img.src = rec.u; iconCacheDone.add(host); }
-      }
-    }).catch(() => {});
-  });
-}
-
-// 成功加载的远程图标异步入库；每站点每会话只记一次
-document.addEventListener('load', e => {
-  const img = e.target;
-  if (!(img instanceof HTMLImageElement)) return;
-  if (img.dataset.sources) clearTimeout(imgTimers.get(img)); // 加载成功，解除超时
-  // 模糊图标处理（与缓存状态无关，凡网格图标加载即判定）。判据 = 放大倍率而非绝对尺寸：
-  // naturalWidth < 显示宽 × 0.8（即放大 >1.25 倍）才视为模糊——同尺寸图标在更大显示
-  // （图标大小设置调大）下更早进入徽章，反之不误伤（favicon.im 返回尺寸有波动，
-  // 绝对阈值会把「够清晰」的图错挂色板）。
-  // ① SVG 卷积锐化（合成层、无 CORS 限制）；② 色板衬底（iOS 徽章式）：icon 缩到 62% 居中，
-  //   按 host 确定性取哑色系背景——放大模糊被显示尺寸缩小直接消解，观感从「糊图」变「徽章」
-  {
-    const iconEl = img.closest && img.closest('.icon');
-    const disp = iconEl ? iconEl.getBoundingClientRect().width : 0;
-    if (img.naturalWidth > 0 && disp > 0 && img.naturalWidth < disp * 0.8 && iconEl) {
-      img.classList.add('icon-sharp');
-      iconEl.classList.add('icon-tile');
-      let key = img.dataset.icache;
-      if (!key) { try { key = new URL(img.src).host; } catch { key = ''; } }
-      iconEl.style.background = tileColor(key);
-    }
-  }
-  // 垫底头像隐藏：多数 favicon 是透明底 PNG，字母头像的底色会从透明区透出（显示为彩色底）——
-  // 图标真正加载成功后隐藏之；全部源失败（advanceIcon 移除 img）时还原
-  if (img.naturalWidth > 0 && img.parentElement) {
-    const ph = img.parentElement.querySelector('.ph');
-    if (ph) ph.style.display = 'none';
-  }
-  // 尺寸守门：加载成功但分辨率过低(<40px，放大必糊)且还有下源 → 继续降级
-  if (img.dataset.sources && img.naturalWidth > 0 && img.naturalWidth < 40) {
-    const chain = img.dataset.sources.split('|');
-    if (chain.indexOf(img.getAttribute('src') || '') < chain.length - 1) { advanceIcon(img); return; }
-  }
-  if (!img.dataset.icache || !img.dataset.sources) return;
-  if (!/^https?:/.test(img.src)) return; // 已是本地 blob 缓存
-  const host = img.dataset.icache;
-  if (iconCacheDone.has(host)) return;
-  // 模糊源不固化缓存：图源返回尺寸有波动（favicon.im 同 URL 时小时大），
-  // 小图成功也留待下次重走全链拿大图；只有清晰源才值得记住
-  {
-    const iconEl0 = img.closest && img.closest('.icon');
-    const disp0 = iconEl0 ? iconEl0.getBoundingClientRect().width : 0;
-    if (disp0 > 0 && img.naturalWidth > 0 && img.naturalWidth < disp0 * 0.8) return;
-  }
-  iconCacheDone.add(host);
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 8000); // 抓取超时：退化为只记源地址
-  fetch(img.src, { mode: 'cors', signal: ctl.signal }).then(r => (r.ok ? r.blob() : Promise.reject(new Error('bad status')))).then(b => {
-    clearTimeout(timer);
-    if (!b || !b.size || b.size > 300 * 1024) return Promise.reject(new Error('skip size'));
-    return idbPut('icache:' + host, b);
-  }).catch(() => { clearTimeout(timer); idbPut('icache:' + host, { u: img.src }).catch(() => {}); });
-}, true);
 
 function cardEl(entry, idx = 0, kidCountOf = () => 0) {
   const a = document.createElement('a');
@@ -1406,203 +1167,6 @@ function renderSwatches() {
     };
     box.append(b);
   });
-}
-
-/* ================= 搜索类型与引擎 ================= */
-function activeType() {
-  return TYPES.find(t => t.id === state.data.settings.searchType) || TYPES[0];
-}
-
-/** 当前生效的引擎（全局选择，与 inftab 一致） */
-function resolveEngine() {
-  const s = state.data.settings;
-  return s.engines.find(e => e.id === s.engine) || s.engines[0];
-}
-
-function renderTypeTabs() {
-  const tabs = $('#engineTabs');
-  tabs.innerHTML = '';
-  TYPES.forEach(ty => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = t(ty.name);
-    b.className = ty.id === state.data.settings.searchType ? 'active' : '';
-    b.onclick = () => {
-      state.data.settings.searchType = ty.id;
-      persist();
-      renderTypeTabs();
-      hideSug();
-    };
-    tabs.append(b);
-  });
-}
-
-function updateSearchUI() {
-  const eng = resolveEngine();
-  // 胶囊容器随图标比例自适应（横向字标不压扁）；字母为加载失败时的兜底
-  const glyph = eng.glyph || (eng.name || '?')[0];
-  let host = '';
-  try { host = new URL(eng.urls.html).host; } catch { host = ''; }
-  const sources = host ? [
-    `https://${host}/favicon.ico`,
-    `https://favicon.im/${host}?larger=true`,
-  ].map(u => escapeHtml(u)).join('|') : '';
-  const img = sources ? `<img class="eng-logo-img" src="${sources.split('|')[0]}" data-sources="${sources}" alt="">` : '';
-  // 白底 + favicon 裁满圆形（与添加列表图标一致）；字母兜底仅在图片加载失败后显示，成功即隐藏
-  $('#engineLogo').innerHTML = `<span class="eng-logo-fb" style="color:${eng.color || tint(eng.name)}">${escapeHtml(glyph)}</span>${img}`;
-  const logoIm = $('#engineLogo .eng-logo-img');
-  if (logoIm) {
-    const fbEl = $('#engineLogo .eng-logo-fb');
-    const hideFb = () => { fbEl.style.display = 'none'; };
-    if (logoIm.complete && logoIm.naturalWidth > 0) hideFb();
-    else logoIm.addEventListener('load', hideFb);
-  }
-}
-
-/* ---------- 引擎选择弹层（Logo 下拉，对齐 inftab：全部引擎 + 添加） ---------- */
-function toggleEngineMenu(force) {
-  const m = $('#engineMenu');
-  if (force !== undefined) { m.hidden = !force; return; }
-  if (m.hidden) { renderEngineMenu(); m.hidden = false; }
-  else m.hidden = true;
-}
-
-function renderEngineMenu() {
-  const m = $('#engineMenu');
-  const cur = resolveEngine();
-  m.innerHTML = '';
-  state.data.settings.engines.forEach(e => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'eng-pick' + (e.id === cur.id ? ' on' : '');
-    b.innerHTML = engineGlyphHTML(e) + `<span class="eng-name">${escapeHtml(e.name)}</span>`;
-    b.onclick = () => {
-      state.data.settings.engine = e.id;
-      persist();
-      toggleEngineMenu(false);
-      updateSearchUI();
-    };
-    m.append(b);
-  });
-  const add = document.createElement('button');
-  add.type = 'button';
-  add.className = 'eng-pick add';
-  add.innerHTML = `<span class="eng-glyph plus">${SVG_PLUS}</span><span class="eng-name">${t('添加')}</span>`;
-  add.onclick = () => { toggleEngineMenu(false); openEngineDialog(null); };
-  m.append(add);
-}
-
-function engineGlyphHTML(eng) {
-  // favicon 覆盖在字母色块上（img 必须位于 .eng-glyph 内部，依赖 .eng-glyph img 绝对定位规则）
-  let inner = escapeHtml(eng.glyph || (eng.name || '?')[0]);
-  let host = '';
-  try { host = new URL(eng.urls.html).host; } catch { host = ''; }
-  if (host) {
-    const sources = [
-      `https://${host}/favicon.ico`,
-      `https://icons.duckduckgo.com/ip3/${host}.ico`,
-      `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
-    ].map(u => escapeHtml(u)).join('|');
-    inner += `<img src="${sources.split('|')[0]}" data-sources="${sources}" alt="" loading="lazy">`;
-  }
-  return `<span class="eng-glyph" style="background:${eng.color || tint(eng.name)}">${inner}</span>`;
-}
-
-function buildSearchUrl(eng, typeId, q) {
-  const tpl = (eng.urls && (eng.urls[typeId] || eng.urls.html)) || '';
-  const eq = encodeURIComponent(q);
-  return tpl.includes('%s') ? tpl.replace('%s', () => eq) : tpl + eq;
-}
-
-/* ---------- 搜索建议（百度 sugrec JSONP） ---------- */
-let sugTimer = null;
-let sugList = [];
-let sugIndex = -1;
-
-function hideSug() {
-  sugList = [];
-  sugIndex = -1;
-  const d = $('#sugDrop');
-  d.hidden = true;
-  d.innerHTML = '';
-}
-
-function renderSug() {
-  const d = $('#sugDrop');
-  if (!sugList.length) { hideSug(); return; }
-  d.innerHTML = sugList.map((q, i) =>
-    `<li class="${i === sugIndex ? 'active' : ''}" data-q="${escapeHtml(q)}">${escapeHtml(q)}</li>`).join('');
-  d.hidden = false;
-}
-
-let sugSeq = 0;
-
-async function fetchSug(q) {
-  const seq = ++sugSeq;
-  const data = await jsonp(
-    `https://www.baidu.com/sugrec?pre=1&p=3&ie=UTF-8&json=1&prod=pc&from=pc_web&wd=${encodeURIComponent(q)}`,
-    '__navSugCb'
-  );
-  if (seq !== sugSeq) return; // 已有更新的请求，丢弃过期结果
-  const list = (data && Array.isArray(data.g) ? data.g : []).map(x => String(x.q || '')).filter(Boolean).slice(0, 8);
-  sugList = list;
-  sugIndex = -1;
-  renderSug();
-}
-
-function jsonp(url, cbName, timeout = 2500) {
-  return new Promise(resolve => {
-    const s = document.createElement('script');
-    const timer = setTimeout(() => { cleanup(); resolve(null); }, timeout);
-    function cleanup() { clearTimeout(timer); delete window[cbName]; s.remove(); }
-    window[cbName] = data => { cleanup(); resolve(data); };
-    s.src = url + '&cb=' + cbName;
-    s.onerror = () => { cleanup(); resolve(null); };
-    document.head.append(s);
-  });
-}
-
-/* ================= 搜索 ================= */
-const LOOKS_LIKE_URL = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?(\/\S*)?$/;
-
-function doSearch(qRaw) {
-  const q = (qRaw !== undefined ? qRaw : $('#searchInput').value).trim();
-  if (!q) return;
-  let target;
-  if (!q.includes(' ') && LOOKS_LIKE_URL.test(q)) {
-    target = /^https?:\/\//i.test(q) ? q : 'https://' + q;
-  } else {
-    const eng = resolveEngine(), typeId = activeType().id;
-    if (!((eng.urls || {})[typeId] || (eng.urls || {}).html)) { toast(t('该引擎未配置搜索地址'), 'error'); return; }
-    target = buildSearchUrl(eng, typeId, q);
-  }
-  if (state.data.settings.openSearchNewTab) window.open(target, '_blank');
-  else location.href = target;
-  if (!state.data.settings.keepSearchText) $('#searchInput').value = '';
-}
-
-/* ================= 自绘确认弹窗（inftab IConfirm 对齐） ================= */
-let cfResolve = null;
-function uiConfirm(title, text) {
-  return new Promise(resolve => {
-    const dlg = $('#dlgConfirm');
-    $('#cfTitle').textContent = title || t('确定');
-    $('#cfText').textContent = text || '';
-    cfResolve = resolve;
-    dlg.showModal();
-  });
-}
-
-/* ================= Toast ================= */
-function toast(msg, type = 'info', ms = 2600) {
-  const el = document.createElement('div');
-  el.className = 'toast' + (type === 'error' ? ' error' : '');
-  el.textContent = msg;
-  $('#toasts').append(el);
-  setTimeout(() => {
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 350);
-  }, ms);
 }
 
 /* ================= 翻页 ================= */
@@ -2482,7 +2046,7 @@ function bindEvents() {
     state.edgePageCreated = false;
   };
 
-  desktopGrid = gridMgr.registerGrid({
+  const desktopGrid = gridMgr.registerGrid({
     id: 'desktop',
     pageEl: () => $('#gridPages .grid-page:not(.off)'),
     hitArea: () => document.body, // 拖出文件夹后，屏幕任意处都是桌面落点
@@ -2582,7 +2146,7 @@ function bindEvents() {
     onCancel: ctx => { finishDrag(ctx); closeFolder(); }, // 实时模型：中断保留已发生的排布
   });
 
-  folderGrid = gridMgr.registerGrid({
+  const folderGrid = gridMgr.registerGrid({
     id: 'folder',
     sortableOnly: true, // 夹内只有排序语义（inftab：夹内长停不升级合并）
     pageEl: () => (state.openFolderId && !$('#folderView').hidden ? $('#fvGrid') : null),
@@ -2611,6 +2175,8 @@ function bindEvents() {
     onDrop: finishDrag,
     onCancel: ctx => { finishDrag(ctx); closeFolder(); },
   });
+
+  setGrids(desktopGrid, folderGrid); // 模块拆分：引擎句柄写回 common（其他模块可读）
 
   // 翻页箭头
   $('#gridPrev').addEventListener('click', () => flipPage(-1));
@@ -2717,33 +2283,6 @@ async function applyWallpaperUpload() {
       $('#wallpaper').style.backgroundImage = `url("${wallObjectUrl}")`;
     }
   } catch { /* 忽略 */ }
-}
-
-/** 单源加载超时即切换下一源，避免某个图源挂起长时间卡住整条回退链 */
-const imgTimers = new WeakMap();
-// 会话级死源黑名单：超时过的图源主机直接跳过（本网络不可达的源不该让每个图标都付超时代价）
-const deadIconHosts = new Set();
-function armImgTimeout(img, ms = 3000) {
-  if (img.complete) return;
-  clearTimeout(imgTimers.get(img));
-  imgTimers.set(img, setTimeout(() => {
-    if (!img.isConnected || img.complete) return;
-    try { deadIconHosts.add(new URL(img.src).host); } catch { /* 忽略 */ }
-    advanceIcon(img);
-  }, ms));
-}
-
-function advanceIcon(img) {
-  const list = (img.dataset.sources || '').split('|').filter(Boolean);
-  const i = list.indexOf(img.getAttribute('src') || '');
-  if (i >= 0 && i + 1 < list.length) { img.src = list[i + 1]; armImgTimeout(img); }
-  else {
-    img.remove();
-    const ph = img.parentElement && img.parentElement.querySelector('.ph');
-    if (ph) ph.style.display = ''; // 全源失败：字母头像回归兜底
-    const iconEl = ph && ph.closest('.icon');
-    if (iconEl) { iconEl.classList.remove('icon-tile'); iconEl.style.background = ''; } // 撤掉色板（字母头像自带底色）
-  }
 }
 
 function bindDirectory() {
