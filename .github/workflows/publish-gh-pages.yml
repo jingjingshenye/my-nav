@@ -22,7 +22,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p site
-          cp -r index.html css js data assets site/
+          cp -r index.html manifest.webmanifest serviceworker.js css js data assets site/
           touch site/.nojekyll
 
       - name: Publish to gh-pages branch

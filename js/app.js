@@ -1,8 +1,10 @@
-import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260930f';
-import { setLang, t, applyI18n } from './i18n.js?v=20260930f';
-import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260930f';
-import { removeTopEntry, moveTopEntry, transferHardBreak, moveIntoFolder, mergeTopEntries, dissolveFolder, reorderFolderMember, sanitizeSites, rebalancePages, repageAll } from './domain/pages.js?v=20260930f';
-import { createGridManager } from './grid-manager.js?v=20260930f';
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260930g';
+import { setLang, t, applyI18n } from './i18n.js?v=20260930g';
+import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260930g';
+import { removeTopEntry, moveTopEntry, transferHardBreak, moveIntoFolder, mergeTopEntries, dissolveFolder, reorderFolderMember, sanitizeSites, rebalancePages, repageAll } from './domain/pages.js?v=20260930g';
+import { createGridManager } from './grid-manager.js?v=20260930g';
+import { idb, idbPut, idbGet } from './idb.js?v=20260930g';
+import { SITE_DIRECTORY } from './data/directory.js?v=20260930g';
 
 /* ================= 小工具 ================= */
 const $ = (s, el = document) => el.querySelector(s);
@@ -443,8 +445,10 @@ function iconHTML(site) {
 // 本地图标 blob -> objectURL 缓存
 const idbIconUrls = new Map();
 async function hydrateIdbIcons(root) {
+  // 仅处理「新建且未填充」的 img（复用节点 src 已就绪，跳过——渲染高频路径减负）
   for (const img of root.querySelectorAll('img[data-idbkey]')) {
     const key = img.dataset.idbkey;
+    if (img.src.startsWith('blob:')) continue; // 复用节点：已填充
     try {
       if (!idbIconUrls.has(key)) {
         const blob = await idbGet(key);
@@ -2615,20 +2619,6 @@ function bindEvents() {
   addEventListener('resize', debounce(renderGrid, 200));
 }
 
-/* ================= 网站目录（本地内置，对齐 inftab 图标库） ================= */
-const SITE_DIRECTORY = [
-  { cat: '常用推荐', sites: [['百度', 'https://www.baidu.com'], ['淘宝', 'https://www.taobao.com'], ['京东', 'https://www.jd.com'], ['哔哩哔哩', 'https://www.bilibili.com'], ['微博', 'https://weibo.com'], ['知乎', 'https://www.zhihu.com'], ['抖音', 'https://www.douyin.com'], ['小红书', 'https://www.xiaohongshu.com'], ['网易云音乐', 'https://music.163.com'], ['腾讯视频', 'https://v.qq.com'], ['爱奇艺', 'https://www.iqiyi.com'], ['拼多多', 'https://www.pinduoduo.com']] },
-  { cat: '新闻资讯', sites: [['澎湃新闻', 'https://www.thepaper.cn'], ['IT之家', 'https://www.ithome.com'], ['少数派', 'https://sspai.com'], ['蓝点网', 'https://www.landiannews.com'], ['新浪新闻', 'https://news.sina.com.cn'], ['腾讯新闻', 'https://news.qq.com'], ['网易新闻', 'https://news.163.com'], ['人民网', 'http://www.people.com.cn'], ['新华网', 'http://www.news.cn'], ['界面新闻', 'https://www.jiemian.com']] },
-  { cat: '购物', sites: [['天猫', 'https://www.tmall.com'], ['唯品会', 'https://www.vip.com'], ['苏宁易购', 'https://www.suning.com'], ['闲鱼', 'https://www.goofish.com'], ['网易严选', 'https://you.163.com'], ['小米商城', 'https://www.mi.com'], ['华为商城', 'https://www.vmall.com']] },
-  { cat: '社交博客', sites: [['豆瓣', 'https://www.douban.com'], ['V2EX', 'https://www.v2ex.com'], ['百度贴吧', 'https://tieba.baidu.com'], ['QQ空间', 'https://qzone.qq.com'], ['X (Twitter)', 'https://x.com'], ['Instagram', 'https://www.instagram.com'], ['Reddit', 'https://www.reddit.com'], ['即刻', 'https://web.okjike.com']] },
-  { cat: '影视视频', sites: [['优酷', 'https://www.youku.com'], ['芒果TV', 'https://www.mgtv.com'], ['搜狐视频', 'https://tv.sohu.com'], ['YouTube', 'https://www.youtube.com'], ['Netflix', 'https://www.netflix.com'], ['Twitch', 'https://www.twitch.tv'], ['西瓜视频', 'https://www.ixigua.com'], ['斗鱼', 'https://www.douyu.com']] },
-  { cat: '音乐', sites: [['QQ音乐', 'https://y.qq.com'], ['酷狗音乐', 'https://www.kugou.com'], ['咪咕音乐', 'https://music.migu.cn'], ['Spotify', 'https://open.spotify.com'], ['Apple Music', 'https://music.apple.com'], ['汽水音乐', 'https://qishui.douyin.com']] },
-  { cat: '学习教育', sites: [['中国大学MOOC', 'https://www.icourse163.org'], ['学堂在线', 'https://www.xuetangx.com'], ['网易公开课', 'https://open.163.com'], ['Coursera', 'https://www.coursera.org'], ['可汗学院', 'https://zh.khanacademy.org'], ['LeetCode', 'https://leetcode.cn'], ['牛客网', 'https://www.nowcoder.com'], ['多邻国', 'https://www.duolingo.cn']] },
-  { cat: '开发工具', sites: [['GitHub', 'https://github.com'], ['Gitee', 'https://gitee.com'], ['Stack Overflow', 'https://stackoverflow.com'], ['MDN', 'https://developer.mozilla.org'], ['掘金', 'https://juejin.cn'], ['CSDN', 'https://www.csdn.net'], ['博客园', 'https://www.cnblogs.com'], ['开源中国', 'https://www.oschina.net'], ['npm', 'https://www.npmjs.com'], ['Can I use', 'https://caniuse.com'], ['菜鸟教程', 'https://www.runoob.com'], ['JSON解析', 'https://www.json.cn']] },
-  { cat: '设计创意', sites: [['稿定设计', 'https://www.gaoding.com'], ['Canva', 'https://www.canva.cn'], ['Figma', 'https://www.figma.com'], ['Dribbble', 'https://dribbble.com'], ['Behance', 'https://www.behance.net'], ['removebg', 'https://www.remove.bg'], ['TinyPNG', 'https://tinypng.com'], ['Iconfont', 'https://www.iconfont.cn'], ['Unsplash', 'https://unsplash.com']] },
-  { cat: '生活服务', sites: [['携程旅行', 'https://www.ctrip.com'], ['飞猪', 'https://www.fligo.com'], ['12306', 'https://www.12306.cn'], ['去哪儿', 'https://www.qunar.com'], ['美团', 'https://www.meituan.com'], ['饿了么', 'https://www.ele.me'], ['下厨房', 'https://www.xiachufang.com'], ['丁香医生', 'https://dxy.com'], ['快递100', 'https://www.kuaidi100.com']] },
-  { cat: '游戏娱乐', sites: [['Steam', 'https://store.steampowered.com'], ['Epic', 'https://store.epicgames.com'], ['4399', 'http://www.4399.com'], ['游民星空', 'https://www.gamersky.com'], ['小黑盒', 'https://www.xiaoheihe.cn'], ['NGA', 'https://bbs.nga.cn']] },
-];
 
 let dirCat = '全部', dirQ = '';
 
@@ -2687,51 +2677,6 @@ function renderDirList() {
   });
 }
 
-/* ================= 本地壁纸上传（IndexedDB） ================= */
-/** IndexedDB 连接复用：整个会话只 open 一次（此前每次读写都重新 open，首载约 45 图标即 45 次连接） */
-let idbPromise = null;
-function idb() {
-  if (!idbPromise) {
-    idbPromise = new Promise((resolve, reject) => {
-      const rq = indexedDB.open('nav-page', 1);
-      rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
-      rq.onsuccess = () => resolve(rq.result);
-      rq.onerror = () => reject(rq.error);
-    });
-  }
-  return idbPromise;
-}
-
-function idbPut(key, value) {
-  return idb().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(value, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  }));
-}
-
-function idbGet(key) {
-  return idb().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction('kv', 'readonly');
-    const req = tx.objectStore('kv').get(key);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  }));
-}
-
-let wallObjectUrl = '';
-async function applyWallpaperUpload() {
-  if (state.data.settings.wallpaper !== 'upload') return;
-  try {
-    const blob = await idbGet('wallpaper');
-    if (blob) {
-      if (wallObjectUrl) URL.revokeObjectURL(wallObjectUrl);
-      wallObjectUrl = URL.createObjectURL(blob);
-      $('#wallpaper').style.backgroundImage = `url("${wallObjectUrl}")`;
-    }
-  } catch { /* 忽略 */ }
-}
 
 /* ================= 历史备份节点（本机快照，存 IndexedDB：不与主数据挤 localStorage 5MB 配额） ================= */
 const BACKUP_KEY = 'nav-backups'; // 旧 localStorage 键（一次性迁移用）
@@ -2759,6 +2704,19 @@ function saveBackupNode() {
     arr.unshift(snapshot);
     return idbPut(IDB_BACKUPS, arr.slice(0, 10));
   }).catch(() => {});
+}
+
+let wallObjectUrl = '';
+async function applyWallpaperUpload() {
+  if (state.data.settings.wallpaper !== 'upload') return;
+  try {
+    const blob = await idbGet('wallpaper');
+    if (blob) {
+      if (wallObjectUrl) URL.revokeObjectURL(wallObjectUrl);
+      wallObjectUrl = URL.createObjectURL(blob);
+      $('#wallpaper').style.backgroundImage = `url("${wallObjectUrl}")`;
+    }
+  } catch { /* 忽略 */ }
 }
 
 /** 单源加载超时即切换下一源，避免某个图源挂起长时间卡住整条回退链 */

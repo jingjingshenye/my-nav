@@ -6,7 +6,8 @@
   <meta name="description" content="观澜 · 观水有术，必观其澜——极简新标签页导航，数据云端同步，随处可用">
   <title>观澜 · 新标签页</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=20260930f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/style.css?v=20260930g">
 </head>
 <body>
   <div class="wallpaper" id="wallpaper"></div>
@@ -417,6 +418,7 @@
   <nav class="ctx-menu" id="ctxMenu" hidden></nav>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
 
-  <script type="module" src="js/app.js?v=20260930f"></script>
+  <script type="module" src="js/app.js?v=20260930g"></script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('serviceworker.js').catch(() => {}));</script>
 </body>
 </html>

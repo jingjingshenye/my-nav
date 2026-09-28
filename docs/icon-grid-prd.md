@@ -225,3 +225,44 @@ app.js（业务）──语义回调──▶ grid-manager（引擎，零业务�
 | v2.2 | 拖动时原位飘「文字」 | ① ghost 是 `.icon` 的克隆，但其布局全写在 `.card .icon` 选择器下，脱离卡片后变 inline：字母占位符与图片并排冒出 → ghost 自带 grid 布局，且有图片时移除 `.ph`；② 源卡只降透明度（.35），「图标+文字」残影仍可读，用户感知为原位飘字 → 改为整卡隐藏 `.drag-source{opacity:0}`（对齐 inftab merge-holder 隐形洞），落位/取消时类移除自动恢复 |
 | v2.2 | 与参考产品 inftab 差距收口（逆向 JS + 实测） | 停顿时长对齐（gap 200ms / merge 350ms）；hover-armed 改 scale(1.1)+蓝光；悬停呼吸蓝光 + 按下缩小(.9)；新增合并聚光 body.merge-spot（压暗其余卡片与搜索区，**不能**用全屏遮罩——grid-page 的 transform 生成独立层叠上下文，遮罩会永久盖住目标卡）；翻页曲线改弹性 .56s cubic-bezier(.37,1.34,.42,1) |
 | v2.1 | 拖动排序闪烁、总是排到前一位 | 挤开预览的 transform 平移污染了后续判定的 getBoundingClientRect（目标卡矩形跟着预览移动 → 中线判定翻转 → 挤开/回弹振荡，索引恒偏一位）→ 全部命中/中线判定改用 offsetLeft/Top 逻辑坐标，预览只动视觉不动判定 |
+
+
+---
+
+## 11. v3.0 时代：inftab 原版模型完整移植（2026-09-29/30）
+
+> v2.x 的 SortableJS/自研几何判定模型整体废弃，拖拽引擎重写为 `js/grid-manager.js`。
+> 以下为现行权威规格（代码注释为最细粒度文档）。
+
+### 11.1 架构（inftab 逆向结论的移植）
+
+| 层 | inftab 原版 | 观澜实现 |
+| --- | --- | --- |
+| 命中 | DOM 落点元素（图标 data-dropid / 页尾 end / 边缘 aside） | 同：elementFromPoint → closest('[data-dropid]') |
+| 调度门 | `_scheduler` 的 (area, dropId) 配对变更门 | 同：配对不变零计算（防闪烁的根本） |
+| 落库 | 停顿即真实数据操作（sortSites/createFolder/intoFolder） | 同：缝隙 200ms → onSort；center 350ms → onCenter；弹窗同帧 |
+| 分区 | _calcArea：指针定侧向、ghost 中心定 center（图标 20%~80% 横带） | 同 + center 迟滞（已 center 态用宽带保持） |
+| 防抖 | 让位动画自然间隙 | + FLIP 冻结窗 230ms（动画中目标移动不重算）+ 冻结到期补发 |
+
+### 11.2 分页（finishingSites / reSort 双语义）
+
+- 日常变更：rebalancePages——溢出级联（满页尾挤下页头）、空页删除、**删不回填**（页内空洞保留）、h 页首标记持久化
+- 布局（行列/预设）变更：repageAll——摊平按新容量纯密度重切（页构成重置）
+- 新增：addTopLevelSite 从当前页向后找空位 + 跳落位页（submitSite 语义）
+- 边缘：aside 窥视循环（白罩淡入 300ms → 翻页 → 淡出 600ms → 驻留循环），宽度 min(10vw,130px) 钳制网格余量
+
+### 11.3 文件夹全流程
+
+建夹 350ms → 同帧弹窗（zoom 自夹卡 + 拖影缩 0.8 + 面板内被拖项隐形占格）→ 拖出双段定时器（dragOutFolder 逐句：原点持久 + 首窗必然零位移无害）→ 落点/松手才移出。右键四项：打开全部(N)/重命名/解压/删除。常驻改名输入框（80 上限）。
+
+### 11.4 编辑模式
+
+±2° 旋转抖动（inftab spin，文件夹不抖）；仅悬停铅笔打开编辑（点卡身无操作）；× 删除无确认（缩放淡出 300ms 即过渡）；卡片跨编辑态复用（切编辑零闪烁）。
+
+### 11.5 图标质量链
+
+高清源瀑布（apple-touch/precomposed/android-chrome-512/icon-512/favicon.svg → favicon.im?larger&throw-error-on-404 → unavatar → ddg → faviconkit → clearbit → google → favicon.ico 沉底）+ 尺寸守门（<40px 降级）+ 会话级死源黑名单 + 放大倍率判据（naturalWidth < 显示宽×0.8）的色板徽章（host 哈希哑色系）+ USM 锐化（SVG feConvolve，A/B 截图验证）。favicon.im CORS 本网络被挡——Canvas 取色不可行（实测结论）。
+
+### 11.6 已知未做（范围外）
+
+云同步多端合并（现为 updatedAt 水位 + 覆盖确认）、天气挂件、AI 超分（效果差不引入）、矢量描摹（以 favicon.svg 直探替代）。
