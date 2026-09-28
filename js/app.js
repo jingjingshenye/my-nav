@@ -1,8 +1,8 @@
-import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260930d';
-import { setLang, t, applyI18n } from './i18n.js?v=20260930d';
-import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260930d';
-import { removeTopEntry, moveTopEntry, transferHardBreak, moveIntoFolder, mergeTopEntries, dissolveFolder, reorderFolderMember, sanitizeSites, rebalancePages, repageAll } from './domain/pages.js?v=20260930d';
-import { createGridManager } from './grid-manager.js?v=20260930d';
+import { createAdapter, DATA_FILE, LocalAdapter } from './adapters.js?v=20260930f';
+import { setLang, t, applyI18n } from './i18n.js?v=20260930f';
+import { uid, TYPES, ENGINE_CATALOG, cloneEngine, seedEngines, seedSettings, seedSites, normalizeSettings, buildData } from './domain/data.js?v=20260930f';
+import { removeTopEntry, moveTopEntry, transferHardBreak, moveIntoFolder, mergeTopEntries, dissolveFolder, reorderFolderMember, sanitizeSites, rebalancePages, repageAll } from './domain/pages.js?v=20260930f';
+import { createGridManager } from './grid-manager.js?v=20260930f';
 
 /* ================= 小工具 ================= */
 const $ = (s, el = document) => el.querySelector(s);
@@ -398,15 +398,22 @@ function sourceChainFor(url, size = 128) {
   try { host = new URL(url).host; } catch { return []; }
   const bare = host.replace(/^www\./, '');
   const list = [
+    // 站点自有高清路径（404 快速失败，不拖链）：PWA 512 / 矢量 SVG（无限清晰）
     `https://${host}/apple-touch-icon.png`,
-    `https://favicon.im/${host}?larger=true`,
+    `https://${host}/apple-touch-icon-precomposed.png`,
+    `https://${host}/android-chrome-512x512.png`,
+    `https://${host}/icon-512.png`,
+    `https://${host}/favicon.svg`,
+    // 聚合服务（favicon.im 服务端已做 link→manifest→touch→ico 瀑布）：
+    // throw-error-on-404 必挂——否则 404 时它返回 200 占位图，回退链会误判成功而卡死
+    `https://favicon.im/${host}?larger=true&throw-error-on-404=true`,
     `https://unavatar.io/${host}?fallback=false`,
     `https://icons.duckduckgo.com/ip3/${bare}.ico`,
     `https://api.faviconkit.com/${bare}/144`,
     `https://logo.clearbit.com/${host}`,
     `https://www.google.com/s2/favicons?domain=${bare}&sz=128`,
     `https://${host}/favicon.ico`,
-    `https://favicon.im/${bare}?larger=true`,
+    `https://favicon.im/${bare}?larger=true&throw-error-on-404=true`,
   ];
   return [...new Set(list)].filter(u => {
     try { return !deadIconHosts.has(new URL(u).host); } catch { return true; }
@@ -430,7 +437,7 @@ function iconHTML(site) {
   if (!sources.length) return ph;
   let host = '';
   try { host = new URL(site.url).host; } catch { return ph; }
-  return `${ph}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" data-icache="${escapeHtml(host)}" alt="" loading="lazy" draggable="false">`;
+  return `${ph}<img src="${escapeHtml(sources[0])}" referrerpolicy="no-referrer" data-sources="${escapeHtml(sources.join('|'))}" data-icache="${escapeHtml(host)}" alt="" loading="lazy" draggable="false">`;
 }
 
 // 本地图标 blob -> objectURL 缓存
@@ -2631,7 +2638,7 @@ function dirIconHTML(entry) {
   try { host = new URL(entry[1]).host; } catch { return letter; }
   const sources = sourceChainFor(entry[1], 64);
   if (!sources.length) return letter;
-  return `${letter}<img src="${escapeHtml(sources[0])}" data-sources="${escapeHtml(sources.join('|'))}" data-icache="${escapeHtml(host)}" alt="" loading="lazy">`;
+  return `${letter}<img src="${escapeHtml(sources[0])}" referrerpolicy="no-referrer" data-sources="${escapeHtml(sources.join('|'))}" data-icache="${escapeHtml(host)}" alt="" loading="lazy">`;
 }
 
 function renderDirCats() {
