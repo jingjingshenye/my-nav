@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers Git 部署配置（纯静态资产站，无 Worker 脚本）
+  // 构建命令把站点文件拷进 dist/，assets.directory 指向它，避免发布 docs/tests 等非站点文件
+  "name": "my-nav",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "single-page-application"
+  }
+}
